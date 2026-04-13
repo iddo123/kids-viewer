@@ -1,0 +1,359 @@
+.challenge-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+  overflow-y: auto;
+  animation: overlay-in 0.25s ease;
+}
+
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.challenge-card {
+  background: white;
+  border-radius: 28px;
+  padding: 28px 24px 20px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  animation: card-pop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes card-pop {
+  0%   { transform: scale(0.6) translateY(40px); opacity: 0; }
+  100% { transform: scale(1) translateY(0);      opacity: 1; }
+}
+
+.challenge-card.success { border: 3px solid #6EE7B7; }
+.challenge-card.fail    { border: 3px solid #FCA5A5; animation: shake 0.4s ease; }
+.challenge-card.answer  { border: 3px solid #A78BFA; }
+
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20%     { transform: translateX(-8px); }
+  60%     { transform: translateX(8px); }
+}
+
+/* Header */
+.challenge-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+.found-at-badge {
+  font-size: 0.75rem;
+  color: #64748b;
+  background: #f1f5f9;
+  border-radius: 20px;
+  padding: 3px 10px;
+  margin-top: -8px;
+}
+
+.challenge-badge {
+  background: linear-gradient(135deg, #4ECDC4, #A78BFA);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 4px 12px;
+  border-radius: 20px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.attempt-dots { display: flex; gap: 6px; }
+.attempt-dot {
+  width: 12px; height: 12px;
+  background: #e2e8f0;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+.attempt-dot.used { background: #FCA5A5; }
+
+/* Word */
+.challenge-word {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: var(--color-navy);
+  letter-spacing: -0.01em;
+}
+.speak-btn {
+  background: #f1f5f9;
+  border-radius: 50%;
+  width: 44px; height: 44px;
+  font-size: 1.3rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, transform 0.15s;
+  flex-shrink: 0;
+}
+.speak-btn:hover { background: #e2e8f0; transform: scale(1.1); }
+
+/* Image */
+.challenge-image-wrap {
+  width: 100%;
+  height: 190px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.challenge-image {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: opacity 0.3s;
+}
+.challenge-emoji-fallback {
+  font-size: 7rem;
+  line-height: 1;
+}
+
+/* Translation */
+.challenge-translation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 10px 18px;
+  width: 100%;
+  justify-content: center;
+}
+.lang-flag-lg { font-size: 1.8rem; }
+.translation-text {
+  font-size: 1.9rem;
+  font-weight: 900;
+  color: var(--color-navy);
+}
+
+/* Feedback */
+.feedback {
+  width: 100%;
+  border-radius: 14px;
+  padding: 12px 16px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.feedback--success { background: #d1fae5; }
+.feedback--fail    { background: #fee2e2; }
+.feedback--answer  { background: #ede9fe; }
+
+.feedback-text {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--color-navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.points-badge {
+  background: #059669;
+  color: white;
+  border-radius: 20px;
+  padding: 2px 10px;
+  font-size: 0.95rem;
+}
+.heard-text {
+  font-size: 0.82rem;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* Mic */
+.mic-section { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
+.mic-prompt { font-size: 0.9rem; font-weight: 700; color: #64748b; }
+.mic-btn {
+  width: 100%;
+  padding: 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #4ECDC4, #44A7A0);
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(78,205,196,0.4);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.mic-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(78,205,196,0.5); }
+.mic-btn--listening {
+  background: linear-gradient(135deg, #FF6B6B, #EF4444);
+  box-shadow: 0 4px 16px rgba(255,107,107,0.5);
+  animation: pulse-glow 1s infinite;
+}
+@keyframes pulse-glow {
+  0%,100% { box-shadow: 0 4px 16px rgba(255,107,107,0.5); }
+  50%      { box-shadow: 0 4px 32px rgba(255,107,107,0.8); }
+}
+.mic-pulse {
+  display: inline-block;
+  width: 10px; height: 10px;
+  background: white;
+  border-radius: 50%;
+  animation: pulse-dot 0.6s infinite alternate;
+}
+@keyframes pulse-dot {
+  from { transform: scale(0.7); opacity: 0.6; }
+  to   { transform: scale(1.2); opacity: 1; }
+}
+.mic-unsupported { font-size: 0.8rem; color: #94a3b8; text-align: center; }
+
+/* Type-it fallback */
+.type-form {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+.type-input {
+  flex: 1;
+  padding: 10px 14px;
+  font-size: 1.1rem;
+  font-family: inherit;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+  letter-spacing: 0.05em;
+}
+.type-input:focus { border-color: #A78BFA; }
+.type-submit-btn {
+  padding: 10px 18px;
+  background: linear-gradient(135deg, #4ECDC4, #A78BFA);
+  color: white;
+  font-size: 1rem;
+  font-weight: 800;
+  font-family: inherit;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.type-submit-btn:hover { opacity: 0.88; }
+
+.switch-mode-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 2px 6px;
+  margin-top: 4px;
+  border-radius: 6px;
+  transition: color 0.15s;
+  display: block;
+  margin: 4px auto 0;
+}
+.switch-mode-btn:hover { color: #64748b; }
+
+/* Skip */
+.skip-btn {
+  background: none;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: color 0.15s;
+}
+.skip-btn:hover { color: #64748b; }
+
+/* Star particles */
+.stars-wrap {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.star-particle {
+  position: absolute;
+  bottom: 0;
+  left: var(--x);
+  font-size: var(--size);
+  animation: star-fly 0.9s var(--delay) ease-out forwards;
+  opacity: 0;
+}
+@keyframes star-fly {
+  0%   { transform: translateY(0) scale(0.5) rotate(0deg);   opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translateY(var(--dy)) scale(1) rotate(360deg); opacity: 0; }
+}
+
+/* ── Detected-object frame with bbox highlight ────────────────────────────── */
+.challenge-frame-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto 4px;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+}
+
+.challenge-frame {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.bbox-highlight {
+  position: absolute;
+  border: 3px solid #ff6b35;
+  border-radius: 6px;
+  pointer-events: none;
+  animation: bbox-pulse 1.1s ease-in-out infinite alternate;
+}
+
+/* Label tag above the bbox */
+.bbox-highlight::before {
+  content: '👆';
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.4rem;
+  animation: bbox-bounce 1.1s ease-in-out infinite alternate;
+}
+
+@keyframes bbox-pulse {
+  from {
+    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.35),
+                0 0 14px rgba(255, 107, 53, 0.4);
+    border-color: #ff6b35;
+  }
+  to {
+    box-shadow: 0 0 0 6px rgba(255, 107, 53, 0.55),
+                0 0 32px rgba(255, 107, 53, 0.65);
+    border-color: #ff3d00;
+  }
+}
+
+@keyframes bbox-bounce {
+  from { transform: translateX(-50%) translateY(0);    }
+  to   { transform: translateX(-50%) translateY(-6px); }
+}
+

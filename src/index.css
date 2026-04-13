@@ -1,0 +1,38 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --color-bg: #FFF9F0;
+  --color-primary: #FF6B6B;
+  --color-secondary: #4ECDC4;
+  --color-yellow: #FFD93D;
+  --color-purple: #A78BFA;
+  --color-green: #6EE7B7;
+  --color-navy: #1E3A5F;
+  --color-text: #2D3748;
+  --radius: 16px;
+  --shadow: 0 4px 20px rgba(0,0,0,0.12);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,0.18);
+  font-family: 'Nunito', 'Segoe UI', sans-serif;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+button:active {
+  transform: scale(0.96);
+}
