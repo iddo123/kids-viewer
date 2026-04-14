@@ -3,11 +3,9 @@ import { LANGUAGES } from '../data/vocabulary'
 import { extractVideoId } from '../utils/helpers'
 import './SetupScreen.css'
 
-// Tip: to add more videos, paste any YouTube URL into this array.
-// Find the video on YouTube, copy the URL, and add it here in the same format.
 const SUGGESTED = [
-  { title: 'Baby Shark 🦈',         url: 'https://www.youtube.com/watch?v=XqZsoesa55w', id: 'XqZsoesa55w' },
-  { title: 'Wheels on the Bus 🚌',  url: 'https://www.youtube.com/watch?v=e_04ZrNroTo', id: 'e_04ZrNroTo' },
+  { title: 'Baby Shark 🦈',        url: 'https://www.youtube.com/watch?v=XqZsoesa55w', id: 'XqZsoesa55w' },
+  { title: 'Wheels on the Bus 🚌', url: 'https://www.youtube.com/watch?v=e_04ZrNroTo', id: 'e_04ZrNroTo' },
 ]
 
 function VideoThumb({ id, title, selected, onClick }) {
@@ -38,11 +36,60 @@ function VideoThumb({ id, title, selected, onClick }) {
   )
 }
 
-export default function SetupScreen({ onStart }) {
-  const [url, setUrl] = useState('')
-  const [lang, setLang] = useState('he')
-  const [interval, setInterval] = useState(300)
-  const [error, setError] = useState('')
+function SearchResult({ video, selected, onSelect }) {
+  return (
+    <button
+      className={`search-result ${selected ? 'search-result--selected' : ''}`}
+      onClick={onSelect}
+      title={video.title}
+    >
+      <div className="search-result-thumb-wrap">
+        <img
+          className="search-result-thumb"
+          src={`https://img.youtube.com/vi/${video.id}/mqdefault.jpg`}
+          alt={video.title}
+          loading="lazy"
+        />
+        {video.duration && (
+          <span className="search-result-duration">{video.duration}</span>
+        )}
+        {selected && <div className="search-result-check">✓</div>}
+      </div>
+      <div className="search-result-info">
+        <span className="search-result-title">{video.title}</span>
+        <span className="search-result-channel">{video.channel}</span>
+      </div>
+    </button>
+  )
+}
+
+export default function SetupScreen({ onStart, stats }) {
+  const [url, setUrl]           = useState('')
+  const [lang, setLang]         = useState('he')
+  const [interval, setInterval] = useState(60)
+  const [error, setError]       = useState('')
+
+  const [searchQuery,   setSearchQuery]   = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [searchStatus,  setSearchStatus]  = useState('idle') // idle | loading | done | error
+
+  const selectedId = extractVideoId(url)
+
+  const handleSearch = async (e) => {
+    e.preventDefault()
+    if (!searchQuery.trim()) return
+    setSearchStatus('loading')
+    setSearchResults([])
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      setSearchResults(data)
+      setSearchStatus(data.length ? 'done' : 'empty')
+    } catch {
+      setSearchStatus('error')
+    }
+  }
 
   const handleStart = () => {
     if (!extractVideoId(url)) {
@@ -50,7 +97,7 @@ export default function SetupScreen({ onStart }) {
       return
     }
     setError('')
-    onStart(url, lang)
+    onStart(url, lang, interval)
   }
 
   return (
@@ -62,12 +109,55 @@ export default function SetupScreen({ onStart }) {
       </div>
 
       <div className="setup-card">
+
+        {/* ── Search ── */}
+        <div className="setup-section">
+          <label className="setup-label">🔍 Search videos with captions</label>
+          <form className="search-bar" onSubmit={handleSearch}>
+            <input
+              className="search-input"
+              type="text"
+              placeholder="e.g. animals for kids, colors song…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+            <button
+              type="submit"
+              className="search-btn"
+              disabled={searchStatus === 'loading'}
+            >
+              {searchStatus === 'loading' ? '…' : '🔍'}
+            </button>
+          </form>
+
+          {searchStatus === 'error' && (
+            <p className="search-error">Search failed — check your connection and try again.</p>
+          )}
+          {searchStatus === 'empty' && (
+            <p className="search-error">No results found. Try different keywords.</p>
+          )}
+
+          {searchResults.length > 0 && (
+            <div className="search-results-grid">
+              {searchResults.map(video => (
+                <SearchResult
+                  key={video.id}
+                  video={video}
+                  selected={selectedId === video.id}
+                  onSelect={() => setUrl(`https://www.youtube.com/watch?v=${video.id}`)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Manual URL ── */}
         <div className="setup-section">
           <label className="setup-label">🎬 YouTube Video URL</label>
           <input
             className="setup-input"
             type="text"
-            placeholder="Paste a YouTube link here…"
+            placeholder="Or paste a YouTube link here…"
             value={url}
             onChange={e => { setUrl(e.target.value); setError('') }}
             onKeyDown={e => e.key === 'Enter' && handleStart()}
@@ -88,43 +178,50 @@ export default function SetupScreen({ onStart }) {
           </div>
         </div>
 
-        <div className="setup-row">
-          <div className="setup-section setup-section--half">
-            <label className="setup-label">🌍 My Language</label>
-            <div className="lang-grid">
-              {LANGUAGES.map(l => (
-                <button
-                  key={l.code}
-                  className={`lang-btn ${lang === l.code ? 'lang-btn--active' : ''}`}
-                  onClick={() => setLang(l.code)}
-                >
-                  <span className="lang-flag">{l.flag}</span>
-                  <span className="lang-name">{l.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="setup-section setup-section--half">
-            <label className="setup-label">⏱ Challenge every…</label>
-            <div className="interval-grid">
-              {[
-                { label: '1 min',  val: 60  },
-                { label: '2 min',  val: 120 },
-                { label: '5 min',  val: 300 },
-                { label: '10 min', val: 600 },
-              ].map(opt => (
-                <button
-                  key={opt.val}
-                  className={`interval-btn ${interval === opt.val ? 'interval-btn--active' : ''}`}
-                  onClick={() => setInterval(opt.val)}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+        {/* ── Language ── */}
+        <div className="setup-section">
+          <label className="setup-label">🌍 My Language</label>
+          <div className="lang-grid">
+            {LANGUAGES.map(l => (
+              <button
+                key={l.code}
+                className={`lang-btn ${lang === l.code ? 'lang-btn--active' : ''}`}
+                onClick={() => setLang(l.code)}
+              >
+                <span className="lang-flag">{l.flag}</span>
+                <span className="lang-name">{l.label}</span>
+              </button>
+            ))}
           </div>
         </div>
+
+        {/* ── Frequency ── */}
+        <div className="setup-section">
+          <label className="setup-label">⏱ Challenge every…</label>
+          <div className="interval-grid">
+            {[
+              { label: '30 sec', val: 30  },
+              { label: '1 min',  val: 60  },
+              { label: '2 min',  val: 120 },
+              { label: '5 min',  val: 300 },
+            ].map(opt => (
+              <button
+                key={opt.val}
+                className={`interval-btn ${interval === opt.val ? 'interval-btn--active' : ''}`}
+                onClick={() => setInterval(opt.val)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {stats?.total > 0 && (
+          <div className="setup-dict-stats">
+            📚 {stats.total} word{stats.total !== 1 ? 's' : ''} learned
+            {stats.mastered > 0 && ` · ⭐ ${stats.mastered} mastered`}
+          </div>
+        )}
 
         <button className="start-btn" onClick={handleStart}>
           🚀 Start Learning!

@@ -52,8 +52,8 @@ export function checkPronunciation(spoken, target) {
   return false
 }
 
-export function getImageUrl(query) {
-  return `https://source.unsplash.com/400x300/?${encodeURIComponent(query)}`
+export function getImageUrl(word) {
+  return `https://loremflickr.com/400/300/${encodeURIComponent(word)}`
 }
 
 export function scoreToLevel(score) {

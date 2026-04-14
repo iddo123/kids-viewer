@@ -26,59 +26,40 @@ exports.handler = async (event) => {
 }
 
 async function fetchCaptions(videoId) {
-  // 1 ── Fetch watch page with realistic browser headers ──────────────────────
-  const watchRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+  const ANDROID_VERSION = '20.10.38'
+  const INNERTUBE_URL   = 'https://www.youtube.com/youtubei/v1/player?prettyPrint=false'
+
+  // 1 ── InnerTube player API (Android client bypasses bot detection) ──────────
+  const playerRes = await fetch(INNERTUBE_URL, {
+    method:  'POST',
     headers: {
-      'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept':          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Cookie':          'CONSENT=YES+1; SOCS=CAI',
+      'Content-Type': 'application/json',
+      'User-Agent':   `com.google.android.youtube/${ANDROID_VERSION} (Linux; U; Android 14)`,
     },
+    body: JSON.stringify({
+      context: { client: { clientName: 'ANDROID', clientVersion: ANDROID_VERSION } },
+      videoId,
+    }),
   })
-  if (!watchRes.ok) throw new Error(`YouTube page HTTP ${watchRes.status}`)
-  const html = await watchRes.text()
+  if (!playerRes.ok) throw new Error(`InnerTube HTTP ${playerRes.status}`)
+  const player = await playerRes.json()
 
-  // 2 ── Extract ytInitialPlayerResponse via bracket counting ─────────────────
-  const match = html.match(/ytInitialPlayerResponse\s*=\s*\{/)
-  if (!match) throw new Error('ytInitialPlayerResponse not found in page HTML')
-
-  const jsonStart = match.index + match[0].length - 1
-  let depth = 0, i = jsonStart, end = -1
-
-  for (; i < html.length; i++) {
-    const c = html[i]
-    if (c === '"') {
-      i++
-      while (i < html.length) {
-        if (html[i] === '\\') { i += 2; continue }
-        if (html[i] === '"')  break
-        i++
-      }
-    } else if (c === '{') {
-      depth++
-    } else if (c === '}') {
-      if (--depth === 0) { end = i; break }
-    }
-  }
-
-  if (end === -1) throw new Error('Failed to parse ytInitialPlayerResponse JSON')
-  const player = JSON.parse(html.slice(jsonStart, end + 1))
-
-  // 3 ── Get caption track URL ─────────────────────────────────────────────────
+  // 2 ── Pick caption track ────────────────────────────────────────────────────
   const tracks = player?.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? []
-  if (!tracks.length) throw new Error('No caption tracks in player response')
+  if (!tracks.length) throw new Error('No caption tracks found')
 
   const track =
     tracks.find(t => t.languageCode === 'en') ||
     tracks.find(t => t.languageCode?.startsWith('en')) ||
     tracks[0]
-
   if (!track?.baseUrl) throw new Error('No baseUrl in caption track')
 
-  // 4 ── Fetch captions in JSON3 format ────────────────────────────────────────
-  const sep        = track.baseUrl.includes('?') ? '&' : '?'
-  const captionRes = await fetch(`${track.baseUrl}${sep}fmt=json3`)
-  if (!captionRes.ok) throw new Error(`Caption fetch HTTP ${captionRes.status}`)
-
-  return captionRes.text()
+  // 3 ── Fetch the caption JSON ────────────────────────────────────────────────
+  const sep    = track.baseUrl.includes('?') ? '&' : '?'
+  const url    = `${track.baseUrl}${sep}fmt=json3`
+  const capRes = await fetch(url)
+  if (!capRes.ok) throw new Error(`Caption fetch HTTP ${capRes.status}`)
+  const text = await capRes.text()
+  if (!text || text.length < 30) throw new Error(`Empty caption response (${text.length} chars)`)
+  return text
 }

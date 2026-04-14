@@ -1,17 +1,138 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import SetupScreen        from './components/SetupScreen'
-import ScreenSharePrompt  from './components/ScreenSharePrompt'
-import VideoPlayer        from './components/VideoPlayer'
-import WordChallenge      from './components/WordChallenge'
-import ScoreDisplay       from './components/ScoreDisplay'
+import SetupScreen       from './components/SetupScreen'
+import VideoPlayer       from './components/VideoPlayer'
+import WordChallenge     from './components/WordChallenge'
+import ScoreDisplay      from './components/ScoreDisplay'
+import DictionaryView    from './components/DictionaryView'
 import { extractVideoId }        from './utils/helpers'
 import { fetchDynamicWordEntry } from './utils/transcript'
-import { useObjectDetection }    from './hooks/useObjectDetection'
-import { useScreenDetection }    from './hooks/useScreenDetection'
+import { useTranscriptWords }    from './hooks/useTranscriptWords'
+import { useUserDictionary }     from './hooks/useUserDictionary'
+import { vocabulary }            from './data/vocabulary'
 import './App.css'
 
+// ── Stop words (words not worth teaching) ────────────────────────────────────
+const STOP_WORDS = new Set([
+  'the','a','an','and','or','but','if','in','on','at','to','for','of','with',
+  'by','from','is','are','was','were','be','been','being','have','has','had',
+  'do','does','did','will','would','shall','should','may','might','must','can',
+  'could','not','no','nor','yet','both','either','neither','so','as','than',
+  'then','there','here','just','also','well','now','still','even','back',
+  'about','after','before','between','during','into','onto','over','under',
+  'through','up','out','off','down','away','again','already','when','where',
+  'why','how','what','which','who','whom','whose','that','this','these','those',
+  'each','every','all','any','few','more','most','other','some','such',
+  'own','same','too','very','only','its','his','her','our','your',
+  'their','my','we','us','they','them','he','she','it','you',
+  'get','got','say','said','see','saw','know','knew','think','thought',
+  'come','came','go','went','make','made','take','took','give','gave',
+  'look','looked','want','wanted','let','put','seem','seemed','tell','told',
+  'ask','asked','keep','kept','call','called','feel','felt','become','became',
+  'something','anything','everything','nothing','someone','anyone','everyone',
+  'yeah','yes','okay','right','like','really','actually','little','much',
+  'many','bit','lot','thing','things','way','good','new','first','last',
+  'long','big','high','old','great','one','two','three','four','five',
+  'because','while','although','since','unless','until','though','whether',
+  'gonna','wanna','gotta','kinda','sorta','alright','um','uh','ah','oh',
+  'hey','hi','bye','hmm',
+])
+
+const MAX_CHALLENGES = 8   // per video
+
+function fmtSec(s) {
+  return `${Math.floor(s / 60)}:${String(Math.round(s) % 60).padStart(2, '0')}`
+}
+
+function buildChallengeSchedule(transcriptWords, getLevelFn, startAfterSec = 0, minGapSec = 60) {
+  if (!transcriptWords.length) return []
+
+  // Count frequency of each content word
+  const freq = {}
+  for (const { word } of transcriptWords) {
+    if (STOP_WORDS.has(word) || word.length < 3) continue
+    freq[word] = (freq[word] || 0) + 1
+  }
+
+  const totalDuration = transcriptWords[transcriptWords.length - 1].startMs / 1000
+
+  // Sliding-window approach: for each time slot pick the best word occurring in that window.
+  // This fills the schedule evenly rather than exhausting high-frequency words early and leaving
+  // the rest of the video empty.
+  const schedule = []
+  const usedWords = new Set()
+  let searchFrom = startAfterSec - minGapSec   // first challenge can start at time 0
+
+  while (schedule.length < MAX_CHALLENGES) {
+    const earliest  = searchFrom + minGapSec
+    const windowEnd = earliest   + minGapSec
+    if (earliest >= totalDuration - 5) break
+
+    const isSuitable = (t) => {
+      const tSec = t.startMs / 1000
+      return tSec >= earliest && tSec < windowEnd &&
+             !STOP_WORDS.has(t.word) &&
+             t.word.length >= 3 &&
+             getLevelFn(t.word) < 3
+    }
+
+    // Prefer words not yet used; fall back to any suitable word (allows repeats in tight vocab)
+    let candidates = transcriptWords.filter(t => isSuitable(t) && !usedWords.has(t.word))
+    if (!candidates.length) candidates = transcriptWords.filter(isSuitable)
+
+    if (!candidates.length) {
+      // No word found in this window — slide forward and try the next slot
+      searchFrom += minGapSec
+      continue
+    }
+
+    // Pick the highest-frequency word in this window
+    const best    = candidates.reduce((a, b) => (freq[b.word] || 0) > (freq[a.word] || 0) ? b : a)
+    const timeSec = Math.floor(best.startMs / 1000)
+
+    schedule.push({ word: best.word, timeSec, fired: false })
+    usedWords.add(best.word)
+    searchFrom = timeSec   // next challenge must be ≥ timeSec + minGapSec
+  }
+
+  return schedule.sort((a, b) => a.timeSec - b.timeSec)
+}
+
+// ── Fallback: vocab-based schedule when no transcript is available ────────────
+function buildFallbackSchedule(duration, videoTitle, getLevelFn, minGapSec = 60) {
+  if (!duration || duration < 30) return []
+
+  // Words that appear in the video title get priority (more relevant to the video)
+  const titleWords = new Set(
+    (videoTitle || '')
+      .toLowerCase()
+      .replace(/[^a-z\s]/g, '')
+      .split(/\s+/)
+      .filter(w => w.length >= 3)
+  )
+
+  const candidates = vocabulary
+    .filter(v => getLevelFn(v.word) < 3)
+    .sort((a, b) => {
+      const aTitle = titleWords.has(a.word) ? 0 : 1
+      const bTitle = titleWords.has(b.word) ? 0 : 1
+      if (aTitle !== bTitle) return aTitle - bTitle          // title words first
+      return getLevelFn(a.word) - getLevelFn(b.word)        // then new words first
+    })
+    .slice(0, MAX_CHALLENGES)
+
+  if (!candidates.length) return []
+
+  // Space evenly but respect the minimum gap
+  const maxCount = Math.min(candidates.length, Math.floor((duration - 20) / minGapSec))
+  const gap      = duration / (maxCount + 1)
+  return candidates.slice(0, maxCount).map((v, i) => ({
+    word:    v.word,
+    timeSec: Math.max(20, Math.round(gap * (i + 1))),
+    fired:   false,
+  })).filter(s => s.timeSec < duration - 10)
+}
+
 export default function App() {
-  // screen: 'setup' | 'permission' | 'playing'
   const [screen, setScreen]           = useState('setup')
   const [videoId, setVideoId]         = useState(null)
   const [language, setLanguage]       = useState('he')
@@ -21,185 +142,118 @@ export default function App() {
   const [streak, setStreak]           = useState(0)
   const [celebration, setCelebration] = useState(null)
   const [videoError, setVideoError]   = useState(null)
-  const [videoDuration, setVideoDuration] = useState(null)
-  const [debugSchedule, setDebugSchedule] = useState([])  // for debug panel
-  const [seekTo, setSeekTo]           = useState(null)
+  const [showDict, setShowDict]           = useState(false)
+  const [scheduleCount, setScheduleCount]       = useState(0)
+  const [videoDuration, setVideoDuration]       = useState(null)
+  const [scheduleSource, setScheduleSource]     = useState('none')
+  const [challengeInterval, setChallengeInterval] = useState(60) // seconds between challenges
 
-  // Refs used inside callbacks
   const languageRef    = useRef(language)
   const inChallengeRef = useRef(false)
-  const isPausedRef    = useRef(false)     // for screen detection — don't scan while paused
   const currentTimeRef = useRef(0)
-  const playerContainerRef = useRef(null)
-  const ytPlayerRef        = useRef(null)  // direct YT player handle for instant pause
+  const activeWordRef  = useRef(null)
+  const scheduleRef    = useRef([])
+  const ytPlayerRef         = useRef(null)
+  const dictionaryRef       = useRef({})
+  const videoTitleRef       = useRef('')
+  const challengeIntervalRef = useRef(60)
 
-  useEffect(() => { languageRef.current = language  }, [language])
-  useEffect(() => { isPausedRef.current = paused     }, [paused])
+  useEffect(() => { languageRef.current = language }, [language])
 
-  // ── Thumbnail detection (always runs, fallback) ───────────────────────────
-  const { objects: thumbObjects, status: thumbStatus } = useObjectDetection(videoId)
+  // ── User dictionary ───────────────────────────────────────────────────────
+  const { dictionary, recordAttempt, stats } = useUserDictionary()
+  useEffect(() => { dictionaryRef.current = dictionary }, [dictionary])
 
-  // ── Schedule for thumbnail-based challenges ───────────────────────────────
-  const scheduleRef = useRef([])
+  // ── Transcript ────────────────────────────────────────────────────────────
+  const { transcriptWords, status: transcriptStatus } = useTranscriptWords(videoId)
 
-  const buildSchedule = useCallback((objects, duration) => {
-    if (!objects.length) return
-    const dur = duration ?? 300
-    const prev = scheduleRef.current  // keep fired state across incremental rebuilds
-    const schedule = objects
-      .filter(obj => obj.timestampPct != null)
-      .map(obj => {
-        const timeSec = Math.round(obj.timestampPct * dur)
-        const existing = prev.find(s => s.obj.label === obj.label && s.timeSec === timeSec)
-        return { timeSec, obj, fired: existing ? existing.fired : false }
-      })
-      .sort((a, b) => a.timeSec - b.timeSec)
-    if (!schedule.length) return
-    scheduleRef.current = schedule
-    setDebugSchedule(schedule.map(s => ({ label: s.obj.label, timeSec: s.timeSec })))
-    console.log('[schedule] built:', schedule.map(s => `${s.obj.label}@${s.timeSec}s${s.fired ? '✓' : ''}`).join(' → '), `(duration=${dur}s)`)
-  }, [])
-
+  // Build challenge schedule once per video when transcript arrives
   useEffect(() => {
-    if (!thumbObjects.length) return
-    buildSchedule(thumbObjects, videoDuration)
-  }, [thumbObjects, videoDuration, buildSchedule])
+    if (!transcriptWords.length) return
 
-  // ── Core challenge trigger ────────────────────────────────────────────────
-  const triggerChallenge = useCallback(async (obj, atSec) => {
+    const getLevelFn = (word) => {
+      const e = dictionaryRef.current[word]
+      if (!e) return 0
+      if (e.timesCorrect >= 3) return 3
+      if (e.timesCorrect >= 1) return 2
+      return 1
+    }
+
+    const schedule = buildChallengeSchedule(
+      transcriptWords,
+      getLevelFn,
+      currentTimeRef.current,
+      challengeIntervalRef.current,
+    )
+    scheduleRef.current = schedule
+    setScheduleCount(schedule.length)
+    setScheduleSource('transcript')
+    console.log('[schedule] transcript:', schedule.map(s => `${s.word}@${fmtSec(s.timeSec)}`).join(', '))
+  }, [transcriptWords])
+
+  // Fetch video title for better fallback word selection (oEmbed — no API key needed)
+  useEffect(() => {
+    if (!videoId) return
+    videoTitleRef.current = ''
+    fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`)
+      .then(r => r.json())
+      .then(d => { videoTitleRef.current = d.title || '' })
+      .catch(() => {})
+  }, [videoId])
+
+  // Fallback schedule: fires when transcript is unavailable AND duration is known
+  useEffect(() => {
+    if (transcriptStatus !== 'unavailable') return
+    if (!videoDuration) return
+
+    const getLevelFn = (word) => {
+      const e = dictionaryRef.current[word]
+      if (!e) return 0
+      if (e.timesCorrect >= 3) return 3
+      if (e.timesCorrect >= 1) return 2
+      return 1
+    }
+    const schedule = buildFallbackSchedule(videoDuration, videoTitleRef.current, getLevelFn, challengeIntervalRef.current)
+    scheduleRef.current = schedule
+    setScheduleCount(schedule.length)
+    setScheduleSource('vocab')
+    console.log('[schedule] fallback vocab:', schedule.map(s => `${s.word}@${fmtSec(s.timeSec)}`).join(', '))
+  }, [transcriptStatus, videoDuration])
+
+  // ── Challenge trigger ─────────────────────────────────────────────────────
+  const triggerChallenge = useCallback(async (word, atSec) => {
     try { ytPlayerRef.current?.pauseVideo() } catch (_) {}
     setPaused(true)
-    isPausedRef.current = true
 
     try {
-      // Grab the actual paused frame if screen capture is active
-      const screenSnap = captureFrame()
-
-      const base = await fetchDynamicWordEntry(obj.label, languageRef.current)
-      setActiveWord({
-        ...base,
-        frameUrl:    screenSnap ? screenSnap.dataUrl : obj.frameUrl,
-        bbox:        screenSnap ? null               : obj.bbox,
-        frameWidth:  screenSnap ? screenSnap.width   : obj.frameWidth,
-        frameHeight: screenSnap ? screenSnap.height  : obj.frameHeight,
-        foundAtSec:  Math.round(atSec),
-      })
+      const vocabEntry = vocabulary.find(v => v.word === word)
+      const dynamic    = await fetchDynamicWordEntry(word, languageRef.current)
+      // Vocab entries have curated emoji + translations; use them when available
+      const wordEntry = {
+        word,
+        emoji:        vocabEntry?.emoji                                ?? '🔤',
+        imageQuery:   vocabEntry?.imageQuery                           ?? word,
+        translations: vocabEntry
+          ? { ...dynamic.translations, ...vocabEntry.translations }   // vocab wins
+          : dynamic.translations,
+        isDynamic:  !vocabEntry,
+        foundAtSec: Math.round(atSec),
+      }
+      activeWordRef.current = wordEntry
+      setActiveWord(wordEntry)
     } catch (err) {
-      console.warn('[challenge] error, resuming:', err)
+      console.warn('[challenge] error:', err)
       try { ytPlayerRef.current?.playVideo() } catch (_) {}
       setPaused(false)
-      isPausedRef.current = false
       inChallengeRef.current = false
     }
   }, [])
 
-  // ── Screen detection (live — fires challenge immediately on new object) ───
-  const handleObjectFound = useCallback((obj) => {
-    if (inChallengeRef.current) return
-    inChallengeRef.current = true
-    triggerChallenge(obj, currentTimeRef.current)
-  }, [triggerChallenge])
+  // ── Dismiss (success or skip) ─────────────────────────────────────────────
+  const dismissChallenge = useCallback((earnedPoints, correct) => {
+    const word = activeWordRef.current?.word
+    if (word) recordAttempt(word, correct)
 
-  const { status: screenStatus, startCapture, stopCapture, captureVideoRef } = useScreenDetection({
-    playerContainerRef,
-    onObjectFound: handleObjectFound,
-    isPausedRef,
-  })
-
-  // Plain function — no hook, no count change.
-  // Grabs the actual paused video frame when screen capture is active.
-  function captureFrame() {
-    const vid       = captureVideoRef.current
-    const container = playerContainerRef.current
-    if (!vid || !container || vid.readyState < 2) return null
-    const rect = container.getBoundingClientRect()
-    const dpr  = window.devicePixelRatio || 1
-    const w    = Math.round(rect.width  * dpr)
-    const h    = Math.round(rect.height * dpr)
-    if (w <= 0 || h <= 0) return null
-    const canvas = document.createElement('canvas')
-    canvas.width  = w
-    canvas.height = h
-    canvas.getContext('2d').drawImage(
-      vid,
-      Math.round(rect.left * dpr), Math.round(rect.top * dpr), w, h,
-      0, 0, w, h
-    )
-    return { dataUrl: canvas.toDataURL('image/jpeg', 0.85), width: w, height: h }
-  }
-
-  // ── Handlers ──────────────────────────────────────────────────────────────
-
-  const handleStart = useCallback((url, lang) => {
-    const id = extractVideoId(url)
-    if (!id) return
-    scheduleRef.current    = []
-    inChallengeRef.current = false
-    setVideoId(id)
-    setLanguage(lang)
-    setVideoDuration(null)
-    setScore(0)
-    setStreak(0)
-    setActiveWord(null)
-    setPaused(false)
-    setVideoError(null)
-    setScreen('permission')   // show explanation before asking for permission
-  }, [])
-
-  // Called when user clicks "Share this tab" — THIS click is the user gesture
-  const handleShareClick = useCallback(async () => {
-    setScreen('playing')       // show video immediately
-    await startCapture()       // request permission (gesture is still active)
-  }, [startCapture])
-
-  const handleSkipShare = useCallback(() => {
-    setScreen('playing')       // skip to playing with thumbnail-only detection
-  }, [])
-
-  const handleBack = useCallback(() => {
-    stopCapture()
-    inChallengeRef.current = false
-    setPaused(false)
-    setActiveWord(null)
-    setVideoError(null)
-    setScreen('setup')
-    setVideoId(null)
-    setVideoDuration(null)
-  }, [stopCapture])
-
-  const handleVideoError    = useCallback((msg) => setVideoError(msg), [])
-  const handleDurationReady = useCallback((dur) => {
-    console.log('[duration] video duration received:', dur, 's')
-    setVideoDuration(dur)
-  }, [])
-
-  const handleTimeUpdate = useCallback((currentTime) => {
-    currentTimeRef.current = currentTime
-
-    // Log every ~5s: confirms the tick is running and shows schedule state
-    if (Math.round(currentTime) % 5 === 0 && Math.round(currentTime) !== 0) {
-      const sched = scheduleRef.current
-      console.log(
-        `[tick] t=${Math.round(currentTime)}s  inChallenge=${inChallengeRef.current}  ` +
-        (sched.length
-          ? sched.map(s => `${s.obj.label}@${s.timeSec}s${s.fired ? '✓' : ''}`).join(' ')
-          : 'schedule empty')
-      )
-    }
-
-    if (inChallengeRef.current) return
-
-    const sched = scheduleRef.current
-    const next = sched.find(s => !s.fired && currentTime >= s.timeSec)
-    if (next) {
-      console.log(`[challenge] firing for ${next.obj.label} at t=${currentTime.toFixed(1)}s`)
-      next.fired = true
-      inChallengeRef.current = true
-      triggerChallenge(next.obj, currentTime)
-    }
-  }, [triggerChallenge])
-
-  const dismissChallenge = useCallback((earnedPoints = 0) => {
     if (earnedPoints > 0) {
       setScore(prev => prev + earnedPoints)
       setStreak(prev => prev + 1)
@@ -208,57 +262,114 @@ export default function App() {
     } else {
       setStreak(0)
     }
+
+    activeWordRef.current  = null
     inChallengeRef.current = false
-    isPausedRef.current    = false
     setActiveWord(null)
     setPaused(false)
-    ytPlayerRef.current?.playVideo?.()
-  }, [])
+    try { ytPlayerRef.current?.playVideo() } catch (_) {}
+  }, [recordAttempt])
 
-  const handleSuccess = useCallback((pts) => dismissChallenge(pts), [dismissChallenge])
-  const handleSkip    = useCallback(()    => dismissChallenge(0),   [dismissChallenge])
+  const handleSuccess = useCallback((pts) => dismissChallenge(pts, true),  [dismissChallenge])
+  const handleSkip    = useCallback(()    => dismissChallenge(0,   false), [dismissChallenge])
 
-  // ── Debug: jump to a scheduled object's timestamp ────────────────────────
-  const handleDebugJump = useCallback((timeSec) => {
-    const entry = scheduleRef.current.find(s => s.timeSec === timeSec)
-    if (entry) entry.fired = false
-    inChallengeRef.current = false
-    isPausedRef.current    = false
+  // ── Time update ───────────────────────────────────────────────────────────
+  const lastTimeRef = useRef(0)
+
+  const handleTimeUpdate = useCallback((currentTime) => {
+    const lastTime = lastTimeRef.current
+    lastTimeRef.current  = currentTime
+    currentTimeRef.current = currentTime
+
+    // Forward seek (> 4 s jump) → silently skip any entries we jumped over
+    if (currentTime - lastTime > 4) {
+      scheduleRef.current.forEach(s => {
+        if (!s.fired && s.timeSec < currentTime) s.fired = true
+      })
+    }
+    // Backward seek → re-arm entries that are now in the future again
+    if (currentTime < lastTime - 2) {
+      scheduleRef.current.forEach(s => {
+        if (s.timeSec > currentTime) s.fired = false
+      })
+    }
+
+    if (inChallengeRef.current) return
+
+    const next = scheduleRef.current.find(s => !s.fired && currentTime >= s.timeSec)
+    if (next) {
+      next.fired = true
+      inChallengeRef.current = true
+      triggerChallenge(next.word, currentTime)
+    }
+  }, [triggerChallenge])
+
+  // ── Navigation ────────────────────────────────────────────────────────────
+  const handleStart = useCallback((url, lang, interval = 60) => {
+    const id = extractVideoId(url)
+    if (!id) return
+    scheduleRef.current        = []
+    inChallengeRef.current     = false
+    activeWordRef.current      = null
+    videoTitleRef.current      = ''
+    challengeIntervalRef.current = interval
+    setVideoId(id)
+    setLanguage(lang)
+    setChallengeInterval(interval)
+    setScore(0)
+    setStreak(0)
+    setScheduleCount(0)
+    setScheduleSource('none')
+    setVideoDuration(null)
     setActiveWord(null)
     setPaused(false)
-    // Drive seek through VideoPlayer's internal ref (same path as pause/play)
-    const target = Math.max(0, timeSec - 2)
-    setSeekTo(target)
-    setTimeout(() => setSeekTo(null), 300)
+    setVideoError(null)
+    setScreen('playing')
   }, [])
 
-  // ── Detection status label ────────────────────────────────────────────────
-  const detectionBadge = (() => {
-    if (screenStatus === 'active')    return '📸 Live scanning'
-    if (screenStatus === 'requesting') return '⏳ Waiting for permission…'
-    if (thumbStatus   === 'loading')  return '🔍 Scanning thumbnails…'
-    if (thumbStatus   === 'ready')    return `🎯 ${thumbObjects.length} object${thumbObjects.length !== 1 ? 's' : ''} found`
-    if (thumbStatus   === 'unavailable') return '🤷 No objects found'
+  const handleBack = useCallback(() => {
+    inChallengeRef.current = false
+    activeWordRef.current  = null
+    setPaused(false)
+    setActiveWord(null)
+    setVideoError(null)
+    setScreen('setup')
+    setVideoId(null)
+  }, [])
+
+  const handleVideoError    = useCallback((msg) => setVideoError(msg), [])
+  const handleDurationReady = useCallback((dur) => {
+    console.log('[duration]', dur, 's')
+    setVideoDuration(dur)
+  }, [])
+
+  // ── Status badge ──────────────────────────────────────────────────────────
+  const statusBadge = (() => {
+    if (transcriptStatus === 'loading') return '📄 Loading captions…'
+    if (scheduleSource === 'transcript') return `📄 ${scheduleCount} word${scheduleCount !== 1 ? 's' : ''} from video`
+    if (scheduleSource === 'vocab')      return `📚 ${scheduleCount} vocabulary word${scheduleCount !== 1 ? 's' : ''} queued`
+    if (transcriptStatus === 'unavailable' && !videoDuration) return '📄 No captions — loading video…'
     return ''
   })()
 
   // ── Render ────────────────────────────────────────────────────────────────
-
   if (screen === 'setup') {
-    return <SetupScreen onStart={handleStart} />
-  }
-
-  if (screen === 'permission') {
-    return <ScreenSharePrompt onShare={handleShareClick} onSkip={handleSkipShare} />
+    return <SetupScreen onStart={handleStart} stats={stats} />
   }
 
   return (
     <div className="app-playing">
       <ScoreDisplay score={score} streak={streak} onBack={handleBack} />
 
-      <div className={`transcript-badge transcript-badge--${screenStatus === 'active' ? 'ready' : thumbStatus}`}>
-        {detectionBadge}
-      </div>
+      <button className="dict-btn" onClick={() => setShowDict(true)}>
+        📚 {stats.total} word{stats.total !== 1 ? 's' : ''}
+      </button>
+
+      {statusBadge && (
+        <div className={`transcript-badge transcript-badge--${transcriptStatus}`}>
+          {statusBadge}
+        </div>
+      )}
 
       {videoError ? (
         <div className="video-error-box">
@@ -272,11 +383,9 @@ export default function App() {
         <VideoPlayer
           videoId={videoId}
           paused={paused}
-          seekTo={seekTo}
           onTimeUpdate={handleTimeUpdate}
           onVideoError={handleVideoError}
           onDurationReady={handleDurationReady}
-          onContainerReady={el => { playerContainerRef.current = el }}
           playerRef={ytPlayerRef}
         />
       )}
@@ -296,23 +405,11 @@ export default function App() {
         </div>
       )}
 
-      {debugSchedule.length > 0 && (
-        <div className="debug-bar">
-          <span className="debug-bar__label">🔍 Jump to:</span>
-          {debugSchedule.map(({ label, timeSec }) => {
-            const m = Math.floor(timeSec / 60)
-            const s = String(timeSec % 60).padStart(2, '0')
-            return (
-              <button
-                key={`${label}-${timeSec}`}
-                className="debug-bar__btn"
-                onClick={() => handleDebugJump(timeSec)}
-              >
-                {label} {m}:{s}
-              </button>
-            )
-          })}
-        </div>
+      {showDict && (
+        <DictionaryView
+          dictionary={dictionary}
+          onClose={() => setShowDict(false)}
+        />
       )}
     </div>
   )

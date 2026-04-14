@@ -1,8 +1,34 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
-import { checkPronunciation, getImageUrl } from '../utils/helpers'
+import { checkPronunciation } from '../utils/helpers'
 import { LANGUAGES } from '../data/vocabulary'
 import './WordChallenge.css'
+
+// Palette of bright kid-friendly gradients
+const GRADIENTS = [
+  ['#ff6b6b','#feca57'], ['#48dbfb','#ff9ff3'], ['#1dd1a1','#f9ca24'],
+  ['#a29bfe','#fd79a8'], ['#fdcb6e','#e17055'], ['#55efc4','#74b9ff'],
+]
+function strHash(s) { return s.split('').reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 0) }
+
+// Animated word illustration for transcript words not in the vocab database
+function WordArt({ word }) {
+  const [g1, g2] = GRADIENTS[Math.abs(strHash(word)) % GRADIENTS.length]
+  const letters = word.split('')
+  return (
+    <div className="word-art" style={{ '--c1': g1, '--c2': g2 }}>
+      {letters.map((ch, i) => (
+        <span
+          key={i}
+          className="word-art-letter"
+          style={{ '--i': i, '--n': letters.length }}
+        >
+          {ch}
+        </span>
+      ))}
+    </div>
+  )
+}
 
 const MAX_ATTEMPTS = 3
 
@@ -37,7 +63,6 @@ function formatTime(sec) {
 export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }) {
   const [phase, setPhase] = useState('show')   // show | listen | success | fail | answer
   const [attempts, setAttempts] = useState(0)
-  const [imgError, setImgError] = useState(false)
   const [spokenText, setSpokenText] = useState('')
   const [typedText, setTypedText] = useState('')
   const [useTypeMode, setUseTypeMode] = useState(false)
@@ -45,7 +70,6 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
 
   const langInfo = LANGUAGES.find(l => l.code === language) || LANGUAGES[0]
   const translation = wordEntry.translations[language] || wordEntry.word
-  const imageUrl = getImageUrl(wordEntry.imageQuery)
   const pointsForAttempt = [100, 50, 25]
   const points = pointsForAttempt[Math.min(attempts, 2)]
 
@@ -121,40 +145,14 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
           </button>
         </div>
 
-        {/* Image — video frame with bbox highlight, or Unsplash fallback */}
-        {wordEntry.frameUrl ? (
-          <div className="challenge-frame-wrap">
-            <img
-              className="challenge-frame"
-              src={wordEntry.frameUrl}
-              alt={wordEntry.word}
-            />
-            {wordEntry.bbox && (
-              <div
-                className="bbox-highlight"
-                style={{
-                  left:   `${(wordEntry.bbox[0] / wordEntry.frameWidth)  * 100}%`,
-                  top:    `${(wordEntry.bbox[1] / wordEntry.frameHeight) * 100}%`,
-                  width:  `${(wordEntry.bbox[2] / wordEntry.frameWidth)  * 100}%`,
-                  height: `${(wordEntry.bbox[3] / wordEntry.frameHeight) * 100}%`,
-                }}
-              />
-            )}
-          </div>
-        ) : (
-          <div className="challenge-image-wrap">
-            {!imgError ? (
-              <img
-                className="challenge-image"
-                src={imageUrl}
-                alt={wordEntry.word}
-                onError={() => setImgError(true)}
-              />
-            ) : (
-              <div className="challenge-emoji-fallback">{wordEntry.emoji}</div>
-            )}
-          </div>
-        )}
+        {/* Visual: large emoji for vocab words, animated word-art for dynamic */}
+        <div className="challenge-image-wrap">
+          {!wordEntry.isDynamic ? (
+            <div className="challenge-emoji-large">{wordEntry.emoji}</div>
+          ) : (
+            <WordArt word={wordEntry.word} />
+          )}
+        </div>
 
         {/* Translation */}
         <div className="challenge-translation">

@@ -138,3 +138,22 @@
   text-transform: capitalize;
 }
 .debug-bar__btn:hover { background: #A78BFA; color: white; }
+
+/* Dictionary button — floating pill in the playing screen */
+.dict-btn {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  font-family: inherit;
+  padding: 5px 14px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.08);
+  border: 1.5px solid rgba(255,255,255,0.14);
+  color: #cbd5e1;
+  cursor: pointer;
+  z-index: 50;
+  transition: background 0.15s, color 0.15s;
+}
+.dict-btn:hover { background: rgba(255,255,255,0.14); color: white; }
