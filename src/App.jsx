@@ -1,14 +1,16 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import SetupScreen       from './components/SetupScreen'
-import VideoPlayer       from './components/VideoPlayer'
-import WordChallenge     from './components/WordChallenge'
-import ScoreDisplay      from './components/ScoreDisplay'
-import DictionaryView    from './components/DictionaryView'
+import SetupScreen          from './components/SetupScreen'
+import VideoPlayer          from './components/VideoPlayer'
+import WordChallenge        from './components/WordChallenge'
+import ScoreDisplay         from './components/ScoreDisplay'
+import DictionaryView       from './components/DictionaryView'
+import LevelUpCelebration   from './components/LevelUpCelebration'
 import { extractVideoId }        from './utils/helpers'
 import { fetchDynamicWordEntry } from './utils/transcript'
 import { useTranscriptWords }    from './hooks/useTranscriptWords'
 import { useUserDictionary }     from './hooks/useUserDictionary'
 import { vocabulary }            from './data/vocabulary'
+import { cancelSpeech } from './utils/tts'
 import './App.css'
 
 // ── Stop words (words not worth teaching) ────────────────────────────────────
@@ -37,10 +39,27 @@ const STOP_WORDS = new Set([
   'hey','hi','bye','hmm',
 ])
 
-const MAX_CHALLENGES = 8   // per video
+// ── Visual-word scoring (prefer concrete words that are easy to illustrate) ───
+const VOCAB_SET = new Set(vocabulary.map(v => v.word))
+const ABSTRACT_SUFFIXES = ['ness','tion','ment','ity','ism','ship','hood','ance','ence']
+const ABSTRACT_WORDS = new Set([
+  'feel','felt','seem','seemed','become','became','wonder','wish','hope',
+  'believe','understand','remember','forget','enjoy','care','mean','meant',
+])
+function visualScore(word) {
+  if (VOCAB_SET.has(word)) return 10       // curated vocab → always show
+  if (ABSTRACT_WORDS.has(word)) return -5  // known-abstract verbs → skip
+  for (const s of ABSTRACT_SUFFIXES) {
+    if (word.endsWith(s)) return -3        // abstract-noun suffixes → deprioritise
+  }
+  return 0
+}
 
 function fmtSec(s) {
-  return `${Math.floor(s / 60)}:${String(Math.round(s) % 60).padStart(2, '0')}`
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = Math.round(s) % 60
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
 }
 
 function buildChallengeSchedule(transcriptWords, getLevelFn, startAfterSec = 0, minGapSec = 60) {
@@ -56,13 +75,15 @@ function buildChallengeSchedule(transcriptWords, getLevelFn, startAfterSec = 0, 
   const totalDuration = transcriptWords[transcriptWords.length - 1].startMs / 1000
 
   // Sliding-window approach: for each time slot pick the best word occurring in that window.
-  // This fills the schedule evenly rather than exhausting high-frequency words early and leaving
-  // the rest of the video empty.
+  // No hard cap — the natural limit is video_duration / minGapSec.
   const schedule = []
   const usedWords = new Set()
   let searchFrom = startAfterSec - minGapSec   // first challenge can start at time 0
 
-  while (schedule.length < MAX_CHALLENGES) {
+  // Combined score: frequency + visual concreteness bonus
+  const wordScore = (w) => (freq[w] || 0) + visualScore(w) * 3
+
+  while (true) {
     const earliest  = searchFrom + minGapSec
     const windowEnd = earliest   + minGapSec
     if (earliest >= totalDuration - 5) break
@@ -85,9 +106,10 @@ function buildChallengeSchedule(transcriptWords, getLevelFn, startAfterSec = 0, 
       continue
     }
 
-    // Pick the highest-frequency word in this window
-    const best    = candidates.reduce((a, b) => (freq[b.word] || 0) > (freq[a.word] || 0) ? b : a)
-    const timeSec = Math.floor(best.startMs / 1000)
+    // Pick the highest-scoring word (frequency + visual concreteness)
+    const best    = candidates.reduce((a, b) => wordScore(b.word) > wordScore(a.word) ? b : a)
+    // Add 2 s so the challenge fires *after* the word has been spoken, not as it starts
+    const timeSec = Math.floor(best.startMs / 1000) + 2
 
     schedule.push({ word: best.word, timeSec, fired: false })
     usedWords.add(best.word)
@@ -118,7 +140,7 @@ function buildFallbackSchedule(duration, videoTitle, getLevelFn, minGapSec = 60)
       if (aTitle !== bTitle) return aTitle - bTitle          // title words first
       return getLevelFn(a.word) - getLevelFn(b.word)        // then new words first
     })
-    .slice(0, MAX_CHALLENGES)
+    .slice(0, 20)
 
   if (!candidates.length) return []
 
@@ -143,6 +165,7 @@ export default function App() {
   const [celebration, setCelebration] = useState(null)
   const [videoError, setVideoError]   = useState(null)
   const [showDict, setShowDict]           = useState(false)
+  const [levelUpInfo, setLevelUpInfo]     = useState(null)  // { word, level }
   const [scheduleCount, setScheduleCount]       = useState(0)
   const [videoDuration, setVideoDuration]       = useState(null)
   const [scheduleSource, setScheduleSource]     = useState('none')
@@ -153,6 +176,7 @@ export default function App() {
   const currentTimeRef = useRef(0)
   const activeWordRef  = useRef(null)
   const scheduleRef    = useRef([])
+  const ttsAbortRef    = useRef(false)   // cancels pre-card TTS when needed
   const ytPlayerRef         = useRef(null)
   const dictionaryRef       = useRef({})
   const videoTitleRef       = useRef('')
@@ -224,21 +248,47 @@ export default function App() {
   const triggerChallenge = useCallback(async (word, atSec) => {
     try { ytPlayerRef.current?.pauseVideo() } catch (_) {}
     setPaused(true)
+    ttsAbortRef.current = false
 
     try {
       const vocabEntry = vocabulary.find(v => v.word === word)
       const dynamic    = await fetchDynamicWordEntry(word, languageRef.current)
-      // Vocab entries have curated emoji + translations; use them when available
+
+      const lang         = languageRef.current
+      const translations = vocabEntry
+        ? { ...dynamic.translations, ...vocabEntry.translations }
+        : dynamic.translations
+      const translation  = translations?.[lang]
+
+      // Skip if no real translation found — don't show the challenge
+      if (!translation || translation.toLowerCase() === word.toLowerCase()) {
+        console.log(`[challenge] skip "${word}" — no translation for ${lang}`)
+        try { ytPlayerRef.current?.playVideo() } catch (_) {}
+        setPaused(false)
+        inChallengeRef.current = false
+        return
+      }
+
+      // Skip if no curated vocab entry — dynamic words have no emoji/image,
+      // just the word spelled out, which is useless for non-readers
+      if (!vocabEntry) {
+        console.log(`[challenge] skip "${word}" — no curated visual`)
+        try { ytPlayerRef.current?.playVideo() } catch (_) {}
+        setPaused(false)
+        inChallengeRef.current = false
+        return
+      }
+
       const wordEntry = {
         word,
-        emoji:        vocabEntry?.emoji                                ?? '🔤',
-        imageQuery:   vocabEntry?.imageQuery                           ?? word,
-        translations: vocabEntry
-          ? { ...dynamic.translations, ...vocabEntry.translations }   // vocab wins
-          : dynamic.translations,
-        isDynamic:  !vocabEntry,
+        emoji:      vocabEntry.emoji,
+        imageQuery: vocabEntry.imageQuery ?? word,
+        translations,
+        isDynamic:  false,
         foundAtSec: Math.round(atSec),
       }
+
+      // Show card immediately — WordChallenge handles TTS in 'presenting' phase
       activeWordRef.current = wordEntry
       setActiveWord(wordEntry)
     } catch (err) {
@@ -252,6 +302,21 @@ export default function App() {
   // ── Dismiss (success or skip) ─────────────────────────────────────────────
   const dismissChallenge = useCallback((earnedPoints, correct) => {
     const word = activeWordRef.current?.word
+
+    // Detect level-up before recording (dictionary not yet updated)
+    if (word && correct) {
+      const e = dictionaryRef.current[word]
+      const prevCorrect = e?.timesCorrect ?? 0
+      const newCorrect  = prevCorrect + 1
+      const prevLevel = !e ? 0 : prevCorrect >= 3 ? 3 : prevCorrect >= 1 ? 2 : 1
+      const newLevel  = newCorrect >= 3 ? 3 : 2
+      // Only celebrate a level-up if the word was already known (prevLevel ≥ 1),
+      // i.e. don't show it on a brand-new word's very first correct answer.
+      if (newLevel > prevLevel && prevLevel >= 1) {
+        setLevelUpInfo({ word, level: newLevel })
+      }
+    }
+
     if (word) recordAttempt(word, correct)
 
     if (earnedPoints > 0) {
@@ -328,6 +393,8 @@ export default function App() {
   }, [])
 
   const handleBack = useCallback(() => {
+    ttsAbortRef.current    = true
+    cancelSpeech()
     inChallengeRef.current = false
     activeWordRef.current  = null
     setPaused(false)
@@ -403,6 +470,14 @@ export default function App() {
         <div className="celebration-toast">
           ⭐ +{celebration.points} points!
         </div>
+      )}
+
+      {levelUpInfo && (
+        <LevelUpCelebration
+          word={levelUpInfo.word}
+          level={levelUpInfo.level}
+          onDone={() => setLevelUpInfo(null)}
+        />
       )}
 
       {showDict && (

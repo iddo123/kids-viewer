@@ -192,7 +192,12 @@ export async function fetchDynamicWordEntry(word, langCode) {
     if (res.ok) {
       const data = await res.json()
       const t = data?.responseData?.translatedText
-      if (t && t.toLowerCase() !== word.toLowerCase() && !t.includes('NO QUERY')) {
+      // Reject if: empty, same as source, API error strings, or contains '#' (MyMemory garbage marker)
+      if (t &&
+          t.toLowerCase() !== word.toLowerCase() &&
+          !t.includes('NO QUERY') &&
+          !t.includes('#') &&
+          t.trim().length > 0) {
         translation = t
       }
     }
