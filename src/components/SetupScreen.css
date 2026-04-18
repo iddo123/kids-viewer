@@ -217,6 +217,14 @@
 }
 .start-btn:active { transform: scale(0.97); }
 
+.app-version {
+  margin: 8px 0 0;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+
 .setup-dict-stats {
   text-align: center;
   font-size: 0.85rem;

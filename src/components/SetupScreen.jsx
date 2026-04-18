@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { LANGUAGES } from '../data/vocabulary'
 import { extractVideoId } from '../utils/helpers'
+import { version } from '../../package.json'
 import './SetupScreen.css'
 
 const SUGGESTED = [
@@ -226,6 +227,8 @@ export default function SetupScreen({ onStart, stats }) {
         <button className="start-btn" onClick={handleStart}>
           🚀 Start Learning!
         </button>
+
+        <p className="app-version">v{version}</p>
       </div>
     </div>
   )
