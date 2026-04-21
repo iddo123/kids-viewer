@@ -1,0 +1,1 @@
+-rw-r--r-- 1 Iddo 197121 0 Apr 18 18:57 C:/Users/Iddo/Projects/kids_viewer/netlify_status.txt

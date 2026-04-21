@@ -93,7 +93,8 @@ function buildChallengeSchedule(transcriptWords, getLevelFn, startAfterSec = 0, 
       return tSec >= earliest && tSec < windowEnd &&
              !STOP_WORDS.has(t.word) &&
              t.word.length >= 3 &&
-             getLevelFn(t.word) < 3
+             getLevelFn(t.word) < 3 &&
+             VOCAB_SET.has(t.word)   // only words with a curated visual
     }
 
     // Prefer words not yet used; fall back to any suitable word (allows repeats in tight vocab)
@@ -116,43 +117,21 @@ function buildChallengeSchedule(transcriptWords, getLevelFn, startAfterSec = 0, 
     searchFrom = timeSec   // next challenge must be ≥ timeSec + minGapSec
   }
 
-  return schedule.sort((a, b) => a.timeSec - b.timeSec)
-}
+  const sorted = schedule.sort((a, b) => a.timeSec - b.timeSec)
 
-// ── Fallback: vocab-based schedule when no transcript is available ────────────
-function buildFallbackSchedule(duration, videoTitle, getLevelFn, minGapSec = 60) {
-  if (!duration || duration < 30) return []
-
-  // Words that appear in the video title get priority (more relevant to the video)
-  const titleWords = new Set(
-    (videoTitle || '')
-      .toLowerCase()
-      .replace(/[^a-z\s]/g, '')
-      .split(/\s+/)
-      .filter(w => w.length >= 3)
-  )
-
-  const candidates = vocabulary
-    .filter(v => getLevelFn(v.word) < 3)
-    .sort((a, b) => {
-      const aTitle = titleWords.has(a.word) ? 0 : 1
-      const bTitle = titleWords.has(b.word) ? 0 : 1
-      if (aTitle !== bTitle) return aTitle - bTitle          // title words first
-      return getLevelFn(a.word) - getLevelFn(b.word)        // then new words first
+  // Cap any single word to ≤15% of total challenges (only when total > 5)
+  if (sorted.length > 5) {
+    const maxPerWord = Math.max(1, Math.round(sorted.length * 0.15))
+    const seen = {}
+    return sorted.filter(s => {
+      seen[s.word] = (seen[s.word] || 0) + 1
+      return seen[s.word] <= maxPerWord
     })
-    .slice(0, 20)
+  }
 
-  if (!candidates.length) return []
-
-  // Space evenly but respect the minimum gap
-  const maxCount = Math.min(candidates.length, Math.floor((duration - 20) / minGapSec))
-  const gap      = duration / (maxCount + 1)
-  return candidates.slice(0, maxCount).map((v, i) => ({
-    word:    v.word,
-    timeSec: Math.max(20, Math.round(gap * (i + 1))),
-    fired:   false,
-  })).filter(s => s.timeSec < duration - 10)
+  return sorted
 }
+
 
 export default function App() {
   const [screen, setScreen]           = useState('setup')
@@ -165,11 +144,11 @@ export default function App() {
   const [celebration, setCelebration] = useState(null)
   const [videoError, setVideoError]   = useState(null)
   const [showDict, setShowDict]           = useState(false)
+  const [showSchedule, setShowSchedule]   = useState(false)
   const [levelUpInfo, setLevelUpInfo]     = useState(null)  // { word, level }
-  const [scheduleCount, setScheduleCount]       = useState(0)
-  const [videoDuration, setVideoDuration]       = useState(null)
-  const [scheduleSource, setScheduleSource]     = useState('none')
-  const [challengeInterval, setChallengeInterval] = useState(60) // seconds between challenges
+  const [scheduleCount, setScheduleCount]         = useState(0)
+  const [scheduleReady, setScheduleReady]         = useState(false)
+  const [challengeInterval, setChallengeInterval] = useState(60)
 
   const languageRef    = useRef(language)
   const inChallengeRef = useRef(false)
@@ -177,9 +156,8 @@ export default function App() {
   const activeWordRef  = useRef(null)
   const scheduleRef    = useRef([])
   const ttsAbortRef    = useRef(false)   // cancels pre-card TTS when needed
-  const ytPlayerRef         = useRef(null)
-  const dictionaryRef       = useRef({})
-  const videoTitleRef       = useRef('')
+  const ytPlayerRef          = useRef(null)
+  const dictionaryRef        = useRef({})
   const challengeIntervalRef = useRef(60)
 
   useEffect(() => { languageRef.current = language }, [language])
@@ -211,38 +189,10 @@ export default function App() {
     )
     scheduleRef.current = schedule
     setScheduleCount(schedule.length)
-    setScheduleSource('transcript')
-    console.log('[schedule] transcript:', schedule.map(s => `${s.word}@${fmtSec(s.timeSec)}`).join(', '))
+    setScheduleReady(true)
+    console.log('[schedule]', schedule.map(s => `${s.word}@${fmtSec(s.timeSec)}`).join(', '))
   }, [transcriptWords])
 
-  // Fetch video title for better fallback word selection (oEmbed — no API key needed)
-  useEffect(() => {
-    if (!videoId) return
-    videoTitleRef.current = ''
-    fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`)
-      .then(r => r.json())
-      .then(d => { videoTitleRef.current = d.title || '' })
-      .catch(() => {})
-  }, [videoId])
-
-  // Fallback schedule: fires when transcript is unavailable AND duration is known
-  useEffect(() => {
-    if (transcriptStatus !== 'unavailable') return
-    if (!videoDuration) return
-
-    const getLevelFn = (word) => {
-      const e = dictionaryRef.current[word]
-      if (!e) return 0
-      if (e.timesCorrect >= 3) return 3
-      if (e.timesCorrect >= 1) return 2
-      return 1
-    }
-    const schedule = buildFallbackSchedule(videoDuration, videoTitleRef.current, getLevelFn, challengeIntervalRef.current)
-    scheduleRef.current = schedule
-    setScheduleCount(schedule.length)
-    setScheduleSource('vocab')
-    console.log('[schedule] fallback vocab:', schedule.map(s => `${s.word}@${fmtSec(s.timeSec)}`).join(', '))
-  }, [transcriptStatus, videoDuration])
 
   // ── Challenge trigger ─────────────────────────────────────────────────────
   const triggerChallenge = useCallback(async (word, atSec) => {
@@ -373,10 +323,9 @@ export default function App() {
   const handleStart = useCallback((url, lang, interval = 60) => {
     const id = extractVideoId(url)
     if (!id) return
-    scheduleRef.current        = []
-    inChallengeRef.current     = false
-    activeWordRef.current      = null
-    videoTitleRef.current      = ''
+    scheduleRef.current          = []
+    inChallengeRef.current       = false
+    activeWordRef.current        = null
     challengeIntervalRef.current = interval
     setVideoId(id)
     setLanguage(lang)
@@ -384,8 +333,7 @@ export default function App() {
     setScore(0)
     setStreak(0)
     setScheduleCount(0)
-    setScheduleSource('none')
-    setVideoDuration(null)
+    setScheduleReady(false)
     setActiveWord(null)
     setPaused(false)
     setVideoError(null)
@@ -404,18 +352,14 @@ export default function App() {
     setVideoId(null)
   }, [])
 
-  const handleVideoError    = useCallback((msg) => setVideoError(msg), [])
-  const handleDurationReady = useCallback((dur) => {
-    console.log('[duration]', dur, 's')
-    setVideoDuration(dur)
-  }, [])
+  const handleVideoError = useCallback((msg) => setVideoError(msg), [])
 
   // ── Status badge ──────────────────────────────────────────────────────────
   const statusBadge = (() => {
-    if (transcriptStatus === 'loading') return '📄 Loading captions…'
-    if (scheduleSource === 'transcript') return `📄 ${scheduleCount} word${scheduleCount !== 1 ? 's' : ''} from video`
-    if (scheduleSource === 'vocab')      return `📚 ${scheduleCount} vocabulary word${scheduleCount !== 1 ? 's' : ''} queued`
-    if (transcriptStatus === 'unavailable' && !videoDuration) return '📄 No captions — loading video…'
+    if (transcriptStatus === 'loading')     return '📄 Loading captions…'
+    if (scheduleReady && scheduleCount > 0) return `📄 ${scheduleCount} word${scheduleCount !== 1 ? 's' : ''} from video`
+    if (scheduleReady && scheduleCount === 0) return '📄 No matching words found'
+    if (transcriptStatus === 'unavailable') return '📄 No captions — no challenges for this video'
     return ''
   })()
 
@@ -433,9 +377,13 @@ export default function App() {
       </button>
 
       {statusBadge && (
-        <div className={`transcript-badge transcript-badge--${transcriptStatus}`}>
+        <button
+          className={`transcript-badge transcript-badge--${transcriptStatus}`}
+          onClick={() => scheduleRef.current.length && setShowSchedule(true)}
+          title={scheduleRef.current.length ? 'See word schedule' : undefined}
+        >
           {statusBadge}
-        </div>
+        </button>
       )}
 
       {videoError ? (
@@ -452,7 +400,6 @@ export default function App() {
           paused={paused}
           onTimeUpdate={handleTimeUpdate}
           onVideoError={handleVideoError}
-          onDurationReady={handleDurationReady}
           playerRef={ytPlayerRef}
         />
       )}
@@ -485,6 +432,32 @@ export default function App() {
           dictionary={dictionary}
           onClose={() => setShowDict(false)}
         />
+      )}
+
+      {showSchedule && (
+        <div className="schedule-overlay" onClick={() => setShowSchedule(false)}>
+          <div className="schedule-panel" onClick={e => e.stopPropagation()}>
+            <div className="schedule-panel-header">
+              <span>🗓 Word Schedule</span>
+              <button className="schedule-close-btn" onClick={() => setShowSchedule(false)}>✕</button>
+            </div>
+            <div className="schedule-list">
+              {scheduleRef.current.map((s, i) => {
+                const vocab = vocabulary.find(v => v.word === s.word)
+                const mm = String(Math.floor(s.timeSec / 60)).padStart(2, '0')
+                const ss = String(s.timeSec % 60).padStart(2, '0')
+                return (
+                  <div key={i} className={`schedule-item ${s.fired ? 'schedule-item--done' : ''}`}>
+                    <span className="schedule-item-emoji">{vocab?.emoji ?? '🔤'}</span>
+                    <span className="schedule-item-word">{s.word}</span>
+                    <span className="schedule-item-time">{mm}:{ss}</span>
+                    <span className="schedule-item-status">{s.fired ? '✓' : '⏳'}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

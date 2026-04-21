@@ -1,0 +1,3 @@
+﻿[user]
+	name = Iddo
+	email = iddo.bd@gmail.com

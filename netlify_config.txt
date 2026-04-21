@@ -1,0 +1,2 @@
+cat: 'C:/Users/Iddo/.netlify/config.json': No such file or directory
+exit:1

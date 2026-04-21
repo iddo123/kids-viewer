@@ -1,0 +1,13 @@
+﻿gh.exe : 
+At line:1 char:1
++ & 'C:\Program Files\GitHub CLI\gh.exe' auth login --hostname github.c ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+! First copy your one-time code: CE53-EFBB
+Open this URL to continue in your web browser: https://github.com/login/device
+Γ£ô Authentication complete.
+- gh config set -h github.com git_protocol https
+Γ£ô Configured git protocol
+Γ£ô Logged in as iddo123
