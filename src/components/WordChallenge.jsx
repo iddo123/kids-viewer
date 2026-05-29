@@ -182,7 +182,9 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
         schedule(() => onSkip(), 3500)
       } else {
         setPhase('fail')
-        schedule(() => { setTypedText(''); setPhase('presenting') }, 1200)
+        // Skip TTS replay — go straight back to listening so the mic stays
+        // effectively open. 600ms is enough to register the shake + "I heard" feedback.
+        schedule(() => { setTypedText(''); setPhase('listening') }, 600)
       }
     }
   }

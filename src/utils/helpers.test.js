@@ -52,12 +52,20 @@ describe('checkPronunciation', () => {
     expect(checkPronunciation('I said dog', 'dog')).toBe(true)
   })
 
-  it('accepts a near-match within 25% edit distance (elefant → elephant)', () => {
+  it('accepts a near-match within 40% edit distance (elefant → elephant)', () => {
     expect(checkPronunciation('elefant', 'elephant')).toBe(true)
   })
 
   it('rejects a clearly wrong word', () => {
     expect(checkPronunciation('banana', 'cat')).toBe(false)
+  })
+
+  it('accepts accent-driven ending drift via prefix check (duc → duck)', () => {
+    expect(checkPronunciation('duc', 'duck')).toBe(true)
+  })
+
+  it('accepts accent vowel shift via edit distance (dak → duck)', () => {
+    expect(checkPronunciation('dak', 'duck')).toBe(true)
   })
 
   it('accepts any matching alternative from an array', () => {

@@ -53,10 +53,13 @@ function _matchesTarget(spoken, target) {
   if (spokenClean.includes(targetClean)) return true
 
   // Check each individual spoken word (handles "a cat" → "cat", "I said dog" → "dog")
-  const threshold = Math.max(1, Math.floor(targetClean.length * 0.25))
+  // 40% edit-distance threshold — lenient enough for accents and kids' pronunciation
+  const threshold = Math.max(1, Math.ceil(targetClean.length * 0.4))
   for (const w of spokenClean.split(/\s+/)) {
     if (w === targetClean) return true
     if (levenshtein(w, targetClean) <= threshold) return true
+    // Prefix check: first 3 chars match covers most accent-driven vowel/ending drift
+    if (targetClean.length >= 4 && w.length >= 3 && w.startsWith(targetClean.slice(0, 3))) return true
   }
   return false
 }
