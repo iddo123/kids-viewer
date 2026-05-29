@@ -66,6 +66,20 @@ export default function VideoPlayer({ videoId, paused, seekTo, onTimeUpdate, onV
     whenReady(() => {
       if (!containerRef.current) return
 
+      // Poll every second; only emit time when the player is in PLAYING state (1).
+      // Starting in onReady (not just onStateChange) fixes mobile browsers where
+      // autoplay is blocked and the user's tap to play doesn't reliably fire onStateChange.
+      function startPolling() {
+        clearInterval(intervalRef.current)
+        intervalRef.current = setInterval(() => {
+          const p = playerRef.current
+          if (!p || typeof p.getCurrentTime !== 'function') return
+          if (p.getPlayerState?.() === 1) {
+            onTimeUpdateRef.current?.(p.getCurrentTime())
+          }
+        }, 1000)
+      }
+
       const player = new window.YT.Player(mountId, {
         videoId,
         width: '100%',
@@ -79,14 +93,14 @@ export default function VideoPlayer({ videoId, paused, seekTo, onTimeUpdate, onV
               durationSentRef.current = true
               onDurationReady?.(dur)
             }
+            startPolling()
           },
           onStateChange(e) {
-            clearInterval(intervalRef.current)
             if (e.data === 0) {          // ended
               onVideoEndRef.current?.()
             }
             if (e.data === 1) {
-              // Also try to grab duration here — it's always available once playing
+              // Grab duration once playing — always available here
               if (!durationSentRef.current) {
                 const p = playerRef.current
                 const dur = p?.getDuration?.()
@@ -95,12 +109,6 @@ export default function VideoPlayer({ videoId, paused, seekTo, onTimeUpdate, onV
                   onDurationReady?.(dur)
                 }
               }
-              intervalRef.current = setInterval(() => {
-                const p = playerRef.current
-                if (p && typeof p.getCurrentTime === 'function') {
-                  onTimeUpdateRef.current?.(p.getCurrentTime())
-                }
-              }, 1000)
             }
           },
           onError(e) {
