@@ -1,48 +1,77 @@
 import { useState, useRef, useCallback } from 'react'
 
+const MAX_NO_SPEECH_RETRIES = 4   // auto-restart mic this many times on silence
+
 export function useSpeechRecognition() {
-  const [listening, setListening] = useState(false)
+  const [listening, setListening]   = useState(false)
   const [transcript, setTranscript] = useState('')
-  const [error, setError] = useState(null)
+  const [error, setError]           = useState(null)
   const [supported] = useState(() =>
     !!(window.SpeechRecognition || window.webkitSpeechRecognition)
   )
-  const recRef = useRef(null)
+  const recRef          = useRef(null)
+  const onResultRef     = useRef(null)
+  const retriesRef      = useRef(0)
+  const stoppedRef      = useRef(false)   // true when we intentionally stopped
 
   const startListening = useCallback((onResult) => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SR) {
-      setError('not-supported')
-      return
-    }
+    if (!SR) { setError('not-supported'); return }
+
+    onResultRef.current = onResult
+    retriesRef.current  = 0
+    stoppedRef.current  = false
     setTranscript('')
     setError(null)
 
+    _start(SR)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function _start(SR) {
+    recRef.current?.abort()
+
     const rec = new SR()
-    rec.lang = 'en-US'
-    rec.continuous = false
-    rec.interimResults = false
-    rec.maxAlternatives = 3
+    rec.lang            = 'en-US'
+    rec.continuous      = false
+    rec.interimResults  = false
+    rec.maxAlternatives = 5   // grab as many alternatives as possible
+
     recRef.current = rec
 
     rec.onstart = () => setListening(true)
 
     rec.onresult = (e) => {
-      // Collect all alternatives from all results
-      const texts = []
+      // Collect every alternative from every result segment
+      const alts = []
       for (let i = 0; i < e.results.length; i++) {
         for (let j = 0; j < e.results[i].length; j++) {
-          texts.push(e.results[i][j].transcript)
+          const t = e.results[i][j].transcript?.trim()
+          if (t) alts.push(t)
         }
       }
-      const best = texts[0] || ''
+      const best = alts[0] || ''
       setTranscript(best)
       setListening(false)
-      onResult?.(best, texts)
+      stoppedRef.current = true
+      console.log('[speech] heard:', alts)
+      onResultRef.current?.(best, alts)   // pass ALL alternatives
     }
 
     rec.onerror = (e) => {
       console.warn('[speech] error:', e.error)
+
+      if (e.error === 'no-speech' && !stoppedRef.current) {
+        // Auto-restart on silence — kid may just be slow to respond
+        if (retriesRef.current < MAX_NO_SPEECH_RETRIES) {
+          retriesRef.current++
+          console.log(`[speech] no-speech — retrying (${retriesRef.current}/${MAX_NO_SPEECH_RETRIES})`)
+          setTimeout(() => {
+            if (!stoppedRef.current) _start(SR)
+          }, 100)
+          return
+        }
+      }
+
       setError(e.error)
       setListening(false)
     }
@@ -56,9 +85,10 @@ export function useSpeechRecognition() {
       setError('not-supported')
       setListening(false)
     }
-  }, [])
+  }
 
   const stopListening = useCallback(() => {
+    stoppedRef.current = true
     recRef.current?.stop()
     setListening(false)
   }, [])

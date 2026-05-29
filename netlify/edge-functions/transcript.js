@@ -1,38 +1,36 @@
-// Netlify function — fetches YouTube captions by scraping the watch page
-// Accessible at /api/transcript?v=VIDEO_ID  (netlify.toml rewrites here)
+// Netlify Edge Function — runs on Cloudflare (not AWS Lambda)
+// Fetches YouTube captions by scraping the watch page.
+// Accessible at /api/transcript?v=VIDEO_ID
 
-exports.handler = async (event) => {
-  const params  = event.queryStringParameters || {}
-  const videoId = params.v || params.videoId
+export default async function handler(request) {
+  const url    = new URL(request.url)
+  const videoId = url.searchParams.get('v') || url.searchParams.get('videoId')
 
   if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
-    return { statusCode: 400, body: 'Invalid or missing video ID' }
+    return new Response('Invalid or missing video ID', { status: 400 })
   }
 
   try {
     const body = await fetchCaptions(videoId)
-    return {
-      statusCode: 200,
+    return new Response(body, {
+      status: 200,
       headers: {
         'Content-Type':                'application/json',
         'Access-Control-Allow-Origin': '*',
         'Cache-Control':               'public, max-age=3600',
       },
-      body,
-    }
+    })
   } catch (err) {
-    console.error(`[transcript] failed for ${videoId}:`, err.message)
-    return {
-      statusCode: 502,
+    console.error(`[transcript-edge] failed for ${videoId}:`, err.message)
+    return new Response(err.message, {
+      status: 502,
       headers: { 'Access-Control-Allow-Origin': '*' },
-      body: err.message,
-    }
+    })
   }
 }
 
 async function fetchCaptions(videoId) {
   // ── Step 1: Fetch the YouTube watch page ──────────────────────────────────
-  // YouTube serves ytInitialPlayerResponse to all clients including cloud IPs.
   const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
     headers: {
       'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
@@ -45,11 +43,11 @@ async function fetchCaptions(videoId) {
   const html = await pageRes.text()
 
   // ── Step 2: Extract ytInitialPlayerResponse ───────────────────────────────
-  const marker = 'var ytInitialPlayerResponse = '
+  const marker    = 'var ytInitialPlayerResponse = '
   const markerIdx = html.indexOf(marker)
   if (markerIdx === -1) throw new Error('ytInitialPlayerResponse not found in page')
 
-  // Use bracket counting to find the end of the JSON object
+  // Bracket-count to find the end of the JSON object
   const jsonStart = markerIdx + marker.length
   let depth = 0, i = jsonStart, end = -1
   for (; i < html.length; i++) {

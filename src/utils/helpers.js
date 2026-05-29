@@ -33,21 +33,30 @@ function levenshtein(a, b) {
   return dp[b.length]
 }
 
+/**
+ * Check if any of the spoken alternatives match the target word.
+ * `spoken` can be a single string or an array of alternatives (all are tried).
+ */
 export function checkPronunciation(spoken, target) {
+  const alts = Array.isArray(spoken) ? spoken : [spoken]
+  return alts.some(s => _matchesTarget(s, target))
+}
+
+function _matchesTarget(spoken, target) {
   const clean = (s) => s.toLowerCase().replace(/[^a-z]/g, '').trim()
   const spokenClean = clean(spoken)
   const targetClean = clean(target)
   if (!spokenClean) return false
-  // Exact or contains
+
+  // Exact match or the full spoken string contains the target
   if (spokenClean === targetClean) return true
   if (spokenClean.includes(targetClean)) return true
-  // Check each spoken word individually (handles "I said apple" → "apple")
-  const spokenWords = spoken.toLowerCase().replace(/[^a-z ]/g, '').trim().split(/\s+/)
-  for (const w of spokenWords) {
+
+  // Check each individual spoken word (handles "a cat" → "cat", "I said dog" → "dog")
+  const threshold = Math.max(1, Math.floor(targetClean.length * 0.25))
+  for (const w of spokenClean.split(/\s+/)) {
     if (w === targetClean) return true
-    const dist = levenshtein(w, targetClean)
-    const threshold = Math.max(1, Math.floor(targetClean.length * 0.3))
-    if (dist <= threshold) return true
+    if (levenshtein(w, targetClean) <= threshold) return true
   }
   return false
 }

@@ -9,24 +9,47 @@
 // works for all video types including music videos.
 
 export async function fetchTranscript(videoId) {
-  // 1 ── Try directly from the browser (avoids server-side IP/cookie restrictions)
-  const directUrls = [
+  // The timedtext API URLs to try
+  const timedtextUrls = [
     `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en&fmt=json3`,
     `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en&kind=asr&fmt=json3`,
+    `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en-US&fmt=json3`,
   ]
-  for (const url of directUrls) {
+
+  // 1 ── Try directly from the browser (no CORS headers from YouTube, will usually fail)
+  for (const url of timedtextUrls) {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) })
       if (!res.ok) continue
       const text = await res.text()
       if (text && text.length >= 30) {
         console.log(`[transcript] ✓ ${text.length} chars (direct) for ${videoId}`)
         return text
       }
-    } catch { /* try next */ }
+    } catch { /* CORS blocked — try next */ }
   }
 
-  // 2 ── Fallback: server proxy (extracts signed URL from watch page)
+  // 2 ── Try via CORS proxies — request runs in the user's browser (residential IP)
+  //      so YouTube serves full caption data, proxy just adds CORS headers
+  const corsProxies = [
+    (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+  ]
+  for (const proxy of corsProxies) {
+    for (const url of timedtextUrls) {
+      try {
+        const res = await fetch(proxy(url), { signal: AbortSignal.timeout(8000) })
+        if (!res.ok) continue
+        const text = await res.text()
+        if (text && text.length >= 30 && text.includes('"events"')) {
+          console.log(`[transcript] ✓ ${text.length} chars (cors-proxy) for ${videoId}`)
+          return text
+        }
+      } catch { /* try next */ }
+    }
+  }
+
+  // 3 ── Fallback: server proxy (may fail if Netlify IPs are blocked by YouTube)
   try {
     const res = await fetch(`/api/transcript?v=${videoId}`, {
       signal: AbortSignal.timeout(12000),
@@ -37,10 +60,10 @@ export async function fetchTranscript(videoId) {
     }
     const text = await res.text()
     if (!text || text.length < 30) throw new Error('Empty response')
-    console.log(`[transcript] ✓ ${text.length} chars (proxy) for ${videoId}`)
+    console.log(`[transcript] ✓ ${text.length} chars (server-proxy) for ${videoId}`)
     return text
   } catch (e) {
-    console.warn(`[transcript] ✗ failed for ${videoId}: ${e.message}`)
+    console.warn(`[transcript] ✗ all methods failed for ${videoId}: ${e.message}`)
     return null
   }
 }

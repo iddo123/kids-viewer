@@ -118,9 +118,9 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
   // ── Auto-start mic ────────────────────────────────────────────────────────
   useEffect(() => {
     if (phase !== 'listening') return
-    startListening((spoken) => {
-      setSpokenText(spoken)
-      handleAnswer(spoken)
+    startListening((best, allAlts) => {
+      setSpokenText(best)
+      handleAnswer(allAlts && allAlts.length ? allAlts : best)
     })
   }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
 

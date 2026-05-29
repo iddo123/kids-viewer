@@ -34,15 +34,17 @@ const YT_ERRORS = {
   150: 'This video cannot be embedded. Try a different one.',
 }
 
-export default function VideoPlayer({ videoId, paused, seekTo, onTimeUpdate, onVideoError, onContainerReady, onDurationReady, playerRef: externalPlayerRef }) {
+export default function VideoPlayer({ videoId, paused, seekTo, onTimeUpdate, onVideoError, onVideoEnd, onContainerReady, onDurationReady, playerRef: externalPlayerRef }) {
   const containerRef = useRef(null)
   const playerRef    = useRef(null)
   const intervalRef     = useRef(null)
   const onTimeUpdateRef = useRef(onTimeUpdate)
   const onVideoErrorRef = useRef(onVideoError)
+  const onVideoEndRef   = useRef(onVideoEnd)
 
   useEffect(() => { onTimeUpdateRef.current = onTimeUpdate }, [onTimeUpdate])
   useEffect(() => { onVideoErrorRef.current = onVideoError }, [onVideoError])
+  useEffect(() => { onVideoEndRef.current   = onVideoEnd   }, [onVideoEnd])
 
   useEffect(() => { loadYouTubeAPI() }, [])
 
@@ -80,6 +82,9 @@ export default function VideoPlayer({ videoId, paused, seekTo, onTimeUpdate, onV
           },
           onStateChange(e) {
             clearInterval(intervalRef.current)
+            if (e.data === 0) {          // ended
+              onVideoEndRef.current?.()
+            }
             if (e.data === 1) {
               // Also try to grab duration here — it's always available once playing
               if (!durationSentRef.current) {

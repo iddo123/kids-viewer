@@ -145,6 +145,7 @@ export default function App() {
   const [videoError, setVideoError]   = useState(null)
   const [showDict, setShowDict]           = useState(false)
   const [showSchedule, setShowSchedule]   = useState(false)
+  const [videoEnded, setVideoEnded]       = useState(false)
   const [levelUpInfo, setLevelUpInfo]     = useState(null)  // { word, level }
   const [scheduleCount, setScheduleCount]         = useState(0)
   const [scheduleReady, setScheduleReady]         = useState(false)
@@ -334,6 +335,7 @@ export default function App() {
     setStreak(0)
     setScheduleCount(0)
     setScheduleReady(false)
+    setVideoEnded(false)
     setActiveWord(null)
     setPaused(false)
     setVideoError(null)
@@ -353,6 +355,10 @@ export default function App() {
   }, [])
 
   const handleVideoError = useCallback((msg) => setVideoError(msg), [])
+  const handleVideoEnd   = useCallback(() => {
+    inChallengeRef.current = false
+    setVideoEnded(true)
+  }, [])
 
   // ── Status badge ──────────────────────────────────────────────────────────
   const statusBadge = (() => {
@@ -400,8 +406,37 @@ export default function App() {
           paused={paused}
           onTimeUpdate={handleTimeUpdate}
           onVideoError={handleVideoError}
+          onVideoEnd={handleVideoEnd}
           playerRef={ytPlayerRef}
         />
+      )}
+
+      {/* ── No captions warning ── */}
+      {transcriptStatus === 'unavailable' && !videoError && (
+        <div className="no-captions-banner">
+          <div className="no-captions-icon">📄</div>
+          <div className="no-captions-text">
+            <strong>No captions found for this video</strong>
+            <span>Word challenges are not available — just enjoy watching!</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── End of video screen ── */}
+      {videoEnded && !videoError && (
+        <div className="video-end-overlay">
+          <div className="video-end-card">
+            <div className="video-end-icon">🎉</div>
+            <h2 className="video-end-title">Great watching!</h2>
+            <p className="video-end-sub">Ready for another video?</p>
+            <button className="video-end-btn video-end-btn--primary" onClick={handleBack}>
+              🔍 Find another video
+            </button>
+            <button className="video-end-btn video-end-btn--secondary" onClick={() => setVideoEnded(false)}>
+              🔁 Watch again
+            </button>
+          </div>
+        </div>
       )}
 
       {activeWord && !videoError && (
