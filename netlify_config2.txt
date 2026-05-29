@@ -1,3 +1,0 @@
-autocompletion.json
-config.json
-exit:0

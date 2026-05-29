@@ -1,4 +1,0 @@
-Not logged in. Please log in to see project status.
-
-Run `netlify login --request "<message>"` to request access from a team member.
-exit:0

@@ -1,4 +1,0 @@
-62da496 Switch caption fetching to InnerTube API; add WordArt, DictionaryView, seek detection, and sliding challenge schedule
-668c548 Add package-lock.json for reproducible installs
-53e1220 Add netlify config and serverless transcript function
-bd1a978 Initial commit: kids English learning app with YouTube + vocabulary challenges

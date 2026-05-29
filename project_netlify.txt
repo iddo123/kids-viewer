@@ -1,2 +1,0 @@
-ls: cannot access 'C:/Users/Iddo/Projects/kids_viewer/.netlify/': No such file or directory
-exit:2

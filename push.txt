@@ -1,3 +1,0 @@
-To https://github.com/iddo123/kids-viewer.git
-   668c548..62da496  feature/fixes-and-improvements -> feature/fixes-and-improvements
-branch 'feature/fixes-and-improvements' set up to track 'origin/feature/fixes-and-improvements'.

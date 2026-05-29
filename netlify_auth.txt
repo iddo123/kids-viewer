@@ -1,4 +1,0 @@
-{
-	"telemetryDisabled": false,
-	"cliId": "b3998005-d0ec-4cdc-bb03-c24efccfa4a4"
-}

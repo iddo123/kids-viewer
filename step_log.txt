@@ -1,3 +1,0 @@
-961fa78 feat: show app version in setup screen
-335ff81 Add shared TTS utilities and refactor WordChallenge flow
-62da496 Switch caption fetching to InnerTube API; add WordArt, DictionaryView, seek detection, and sliding challenge schedule
