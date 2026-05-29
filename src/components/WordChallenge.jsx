@@ -320,16 +320,24 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
               </>
             ) : phase === 'listening' ? (
               <>
-                <p className="mic-prompt">
-                  {listening ? 'Listening… 🎤' : 'Tap to speak! 👇'}
+                <p className={`mic-prompt${listening ? ' mic-prompt--go' : ''}`}>
+                  {listening ? '🎤 SAY IT NOW!' : 'Tap the mic to speak! 👇'}
                 </p>
-                <button
-                  className={`listening-ring${listening ? '' : ' listening-ring--idle'}`}
-                  onClick={triggerMic}
-                  aria-label="Tap to speak"
-                >
-                  🎙
-                </button>
+                <div className="mic-container">
+                  {listening && <>
+                    <div className="mic-ripple mic-ripple--1" />
+                    <div className="mic-ripple mic-ripple--2" />
+                    <div className="mic-ripple mic-ripple--3" />
+                  </>}
+                  <button
+                    className={`listening-ring${listening ? ' listening-ring--active' : ' listening-ring--idle'}`}
+                    onClick={triggerMic}
+                    aria-label={listening ? 'Listening' : 'Tap to speak'}
+                  >
+                    🎙
+                    {listening && <span className="rec-dot" />}
+                  </button>
+                </div>
                 <button className="switch-mode-btn" onClick={() => { setUseTypeMode(true); setPhase('typing') }}>
                   ⌨️ Type instead
                 </button>

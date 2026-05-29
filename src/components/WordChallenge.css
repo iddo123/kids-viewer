@@ -285,40 +285,93 @@
   to   { height: 32px; opacity: 1;   }
 }
 
-/* Listening ring (now a button) */
-.listening-ring {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: rgba(78, 205, 196, 0.15);
-  border: 3px solid #4ECDC4;
+/* ── Mic prompt text ── */
+.mic-prompt--go {
+  font-size: 1.15rem !important;
+  font-weight: 900 !important;
+  color: #16a34a !important;
+  letter-spacing: 0.02em;
+  animation: go-pulse 0.8s ease-in-out infinite alternate;
+}
+@keyframes go-pulse {
+  from { opacity: 0.85; }
+  to   { opacity: 1; }
+}
+
+/* ── Mic container (positions ripples relative to button) ── */
+.mic-container {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2.2rem;
+  width: 120px;
+  height: 120px;
+}
+
+/* ── Ripple rings (visible only while listening) ── */
+.mic-ripple {
+  position: absolute;
+  border-radius: 50%;
+  border: 2.5px solid #22c55e;
+  pointer-events: none;
+  animation: mic-ripple-expand 1.8s ease-out infinite;
+}
+.mic-ripple--1 { width: 100%; height: 100%; animation-delay: 0s; }
+.mic-ripple--2 { width: 100%; height: 100%; animation-delay: 0.6s; }
+.mic-ripple--3 { width: 100%; height: 100%; animation-delay: 1.2s; }
+@keyframes mic-ripple-expand {
+  0%   { transform: scale(1);    opacity: 0.7; }
+  100% { transform: scale(1.9);  opacity: 0;   }
+}
+
+/* ── Mic button ── */
+.listening-ring {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.4rem;
   cursor: pointer;
-  animation: ring-pulse 1.2s ease-out infinite;
-  transition: transform 0.1s, background 0.2s;
   font-family: inherit;
   padding: 0;
+  transition: transform 0.1s, background 0.2s, border-color 0.2s;
+  z-index: 1;
 }
-.listening-ring:active { transform: scale(0.92); }
+.listening-ring:active { transform: scale(0.91); }
 
-/* Idle state: mic didn't auto-open — prompt the user to tap */
+.listening-ring--active {
+  background: rgba(34, 197, 94, 0.18);
+  border: 3.5px solid #22c55e;
+  box-shadow: 0 0 0 0 rgba(34,197,94,0.4);
+}
 .listening-ring--idle {
   background: rgba(167, 139, 250, 0.15);
-  border-color: #A78BFA;
+  border: 3px solid #A78BFA;
   animation: ring-pulse-idle 1.4s ease-out infinite;
 }
-@keyframes ring-pulse {
-  0%   { transform: scale(1);    box-shadow: 0 0 0 0   rgba(78,205,196,0.45); }
-  70%  { transform: scale(1.06); box-shadow: 0 0 0 18px rgba(78,205,196,0); }
-  100% { transform: scale(1);    box-shadow: 0 0 0 0   rgba(78,205,196,0); }
-}
 @keyframes ring-pulse-idle {
-  0%   { transform: scale(1);    box-shadow: 0 0 0 0   rgba(167,139,250,0.45); }
-  70%  { transform: scale(1.06); box-shadow: 0 0 0 18px rgba(167,139,250,0); }
-  100% { transform: scale(1);    box-shadow: 0 0 0 0   rgba(167,139,250,0); }
+  0%   { box-shadow: 0 0 0 0   rgba(167,139,250,0.5); }
+  70%  { box-shadow: 0 0 0 12px rgba(167,139,250,0);  }
+  100% { box-shadow: 0 0 0 0   rgba(167,139,250,0);   }
+}
+
+/* ── Blinking red recording dot ── */
+.rec-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: rec-blink 1s step-start infinite;
+}
+@keyframes rec-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
 }
 
 .mic-unsupported { font-size: 0.8rem; color: #94a3b8; text-align: center; }
