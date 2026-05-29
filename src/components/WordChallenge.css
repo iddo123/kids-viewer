@@ -238,9 +238,16 @@
   font-size: 0.95rem;
 }
 .heard-text {
-  font-size: 0.82rem;
-  color: #64748b;
-  margin-top: 4px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #dc2626;
+  margin-top: 6px;
+  background: rgba(220, 38, 38, 0.08);
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+.heard-text em {
+  font-style: normal;
 }
 
 /* ── Activity section (speaking / listening / typing) ── */
@@ -278,7 +285,7 @@
   to   { height: 32px; opacity: 1;   }
 }
 
-/* Listening ring */
+/* Listening ring (now a button) */
 .listening-ring {
   width: 80px;
   height: 80px;
@@ -289,12 +296,29 @@
   align-items: center;
   justify-content: center;
   font-size: 2.2rem;
+  cursor: pointer;
   animation: ring-pulse 1.2s ease-out infinite;
+  transition: transform 0.1s, background 0.2s;
+  font-family: inherit;
+  padding: 0;
+}
+.listening-ring:active { transform: scale(0.92); }
+
+/* Idle state: mic didn't auto-open — prompt the user to tap */
+.listening-ring--idle {
+  background: rgba(167, 139, 250, 0.15);
+  border-color: #A78BFA;
+  animation: ring-pulse-idle 1.4s ease-out infinite;
 }
 @keyframes ring-pulse {
   0%   { transform: scale(1);    box-shadow: 0 0 0 0   rgba(78,205,196,0.45); }
   70%  { transform: scale(1.06); box-shadow: 0 0 0 18px rgba(78,205,196,0); }
   100% { transform: scale(1);    box-shadow: 0 0 0 0   rgba(78,205,196,0); }
+}
+@keyframes ring-pulse-idle {
+  0%   { transform: scale(1);    box-shadow: 0 0 0 0   rgba(167,139,250,0.45); }
+  70%  { transform: scale(1.06); box-shadow: 0 0 0 18px rgba(167,139,250,0); }
+  100% { transform: scale(1);    box-shadow: 0 0 0 0   rgba(167,139,250,0); }
 }
 
 .mic-unsupported { font-size: 0.8rem; color: #94a3b8; text-align: center; }

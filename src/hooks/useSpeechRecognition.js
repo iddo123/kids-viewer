@@ -28,8 +28,22 @@ export function useSpeechRecognition() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function _start(SR) {
-    recRef.current?.abort()
+    const prev = recRef.current
+    recRef.current = null
+    if (prev) {
+      prev.onend = null   // prevent stale onend from firing after we move on
+      try { prev.abort() } catch (_) {}
+    }
 
+    // Small gap so the browser fully releases the previous session before we open a new one.
+    // Without this, some browsers refuse start() on the new instance.
+    setTimeout(() => {
+      if (stoppedRef.current) return
+      _createAndStart(SR)
+    }, 50)
+  }
+
+  function _createAndStart(SR) {
     const rec = new SR()
     rec.lang            = 'en-US'
     rec.continuous      = false

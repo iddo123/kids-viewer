@@ -64,7 +64,7 @@ const CHALLENGE_TIMEOUT = 15   // seconds before auto-skip
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }) {
-  const { error: micError, startListening, supported } = useSpeechRecognition()
+  const { listening, error: micError, startListening, supported } = useSpeechRecognition()
 
   // Always start at 'presenting' — card shows, then TTS plays
   const [phase, setPhase]           = useState('presenting')
@@ -115,13 +115,22 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
     }
   }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Stable ref so the mic button and the effect share the same callback
+  const speechCallbackRef = useRef(null)
+  speechCallbackRef.current = (best, allAlts) => {
+    setSpokenText(best)
+    handleAnswer(allAlts && allAlts.length ? allAlts : best)
+  }
+
+  const triggerMic = useCallback(() => {
+    setSpokenText('')
+    startListening((best, allAlts) => speechCallbackRef.current(best, allAlts))
+  }, [startListening])
+
   // ── Auto-start mic ────────────────────────────────────────────────────────
   useEffect(() => {
     if (phase !== 'listening') return
-    startListening((best, allAlts) => {
-      setSpokenText(best)
-      handleAnswer(allAlts && allAlts.length ? allAlts : best)
-    })
+    triggerMic()
   }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Mic error → fall back to typing ──────────────────────────────────────
@@ -160,7 +169,7 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
         setTimeout(() => onSkip(), 3500)
       } else {
         setPhase('fail')
-        setTimeout(() => { setTypedText(''); setPhase('presenting') }, 1600)
+        setTimeout(() => { setTypedText(''); setPhase('presenting') }, 2500)
       }
     }
   }
@@ -296,8 +305,16 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
               </>
             ) : phase === 'listening' ? (
               <>
-                <p className="mic-prompt">Your turn! 🎤</p>
-                <div className="listening-ring">🎙</div>
+                <p className="mic-prompt">
+                  {listening ? 'Listening… 🎤' : 'Tap to speak! 👇'}
+                </p>
+                <button
+                  className={`listening-ring${listening ? '' : ' listening-ring--idle'}`}
+                  onClick={triggerMic}
+                  aria-label="Tap to speak"
+                >
+                  🎙
+                </button>
                 <button className="switch-mode-btn" onClick={() => { setUseTypeMode(true); setPhase('typing') }}>
                   ⌨️ Type instead
                 </button>
