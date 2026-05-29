@@ -203,27 +203,24 @@ export default function App() {
 
     try {
       const vocabEntry = vocabulary.find(v => v.word === word)
-      const dynamic    = await fetchDynamicWordEntry(word, languageRef.current)
 
-      const lang         = languageRef.current
-      const translations = vocabEntry
-        ? { ...dynamic.translations, ...vocabEntry.translations }
-        : dynamic.translations
-      const translation  = translations?.[lang]
-
-      // Skip if no real translation found — don't show the challenge
-      if (!translation || translation.toLowerCase() === word.toLowerCase()) {
-        console.log(`[challenge] skip "${word}" — no translation for ${lang}`)
+      // Only curated words are scheduled, so vocabEntry is always present.
+      // Skip the dynamic translation fetch — it's a 0-5s network call whose
+      // result is overwritten by vocabEntry.translations anyway.
+      if (!vocabEntry) {
+        console.log(`[challenge] skip "${word}" — no curated visual`)
         try { ytPlayerRef.current?.playVideo() } catch (_) {}
         setPaused(false)
         inChallengeRef.current = false
         return
       }
 
-      // Skip if no curated vocab entry — dynamic words have no emoji/image,
-      // just the word spelled out, which is useless for non-readers
-      if (!vocabEntry) {
-        console.log(`[challenge] skip "${word}" — no curated visual`)
+      const lang        = languageRef.current
+      const translation = vocabEntry.translations?.[lang]
+
+      // Skip if no translation for the selected language
+      if (!translation || translation.toLowerCase() === word.toLowerCase()) {
+        console.log(`[challenge] skip "${word}" — no translation for ${lang}`)
         try { ytPlayerRef.current?.playVideo() } catch (_) {}
         setPaused(false)
         inChallengeRef.current = false
@@ -234,7 +231,7 @@ export default function App() {
         word,
         emoji:      vocabEntry.emoji,
         imageQuery: vocabEntry.imageQuery ?? word,
-        translations,
+        translations: vocabEntry.translations,
         isDynamic:  false,
         foundAtSec: Math.round(atSec),
       }
