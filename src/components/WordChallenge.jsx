@@ -182,7 +182,7 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
         schedule(() => onSkip(), 3500)
       } else {
         setPhase('fail')
-        schedule(() => { setTypedText(''); setPhase('presenting') }, 2500)
+        schedule(() => { setTypedText(''); setPhase('presenting') }, 1200)
       }
     }
   }
@@ -345,11 +345,11 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
             ) : (
               /* presenting */
               <>
-                <p className="mic-prompt">
-                  {attemptsRef.current === 0 ? 'Listen carefully…' : 'Listen again…'}
+                <p className={`mic-prompt${attemptsRef.current > 0 ? ' mic-prompt--retry' : ''}`}>
+                  {attemptsRef.current === 0 ? 'Listen carefully… 👂' : '👂 Listen again!'}
                 </p>
                 <div className="speaking-indicator" aria-label="Speaking">
-                  {[0,1,2].map(i => <span key={i} className="speaking-bar" style={{ '--bi': i }} />)}
+                  {[0,1,2,3,4].map(i => <span key={i} className="speaking-bar" style={{ '--bi': i }} />)}
                 </div>
               </>
             )}

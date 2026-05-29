@@ -266,6 +266,11 @@
   right: 0;
 }
 .mic-prompt { font-size: 0.9rem; font-weight: 700; color: #64748b; }
+.mic-prompt--retry {
+  font-size: 1.1rem !important;
+  font-weight: 900 !important;
+  color: #7c3aed !important;
+}
 
 /* Speaking bars animation */
 .speaking-indicator {
