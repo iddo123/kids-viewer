@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import { checkPronunciation } from '../utils/helpers'
 import { LANGUAGES } from '../data/vocabulary'
