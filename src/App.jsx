@@ -6,38 +6,14 @@ import ScoreDisplay         from './components/ScoreDisplay'
 import DictionaryView       from './components/DictionaryView'
 import LevelUpCelebration   from './components/LevelUpCelebration'
 import { extractVideoId }        from './utils/helpers'
-import { fetchDynamicWordEntry } from './utils/transcript'
 import { useTranscriptWords }    from './hooks/useTranscriptWords'
+import { STOP_WORDS }            from './utils/transcript'
 import { useUserDictionary }     from './hooks/useUserDictionary'
 import { vocabulary }            from './data/vocabulary'
 import { cancelSpeech } from './utils/tts'
 import './App.css'
 
-// ── Stop words (words not worth teaching) ────────────────────────────────────
-const STOP_WORDS = new Set([
-  'the','a','an','and','or','but','if','in','on','at','to','for','of','with',
-  'by','from','is','are','was','were','be','been','being','have','has','had',
-  'do','does','did','will','would','shall','should','may','might','must','can',
-  'could','not','no','nor','yet','both','either','neither','so','as','than',
-  'then','there','here','just','also','well','now','still','even','back',
-  'about','after','before','between','during','into','onto','over','under',
-  'through','up','out','off','down','away','again','already','when','where',
-  'why','how','what','which','who','whom','whose','that','this','these','those',
-  'each','every','all','any','few','more','most','other','some','such',
-  'own','same','too','very','only','its','his','her','our','your',
-  'their','my','we','us','they','them','he','she','it','you',
-  'get','got','say','said','see','saw','know','knew','think','thought',
-  'come','came','go','went','make','made','take','took','give','gave',
-  'look','looked','want','wanted','let','put','seem','seemed','tell','told',
-  'ask','asked','keep','kept','call','called','feel','felt','become','became',
-  'something','anything','everything','nothing','someone','anyone','everyone',
-  'yeah','yes','okay','right','like','really','actually','little','much',
-  'many','bit','lot','thing','things','way','good','new','first','last',
-  'long','big','high','old','great','one','two','three','four','five',
-  'because','while','although','since','unless','until','though','whether',
-  'gonna','wanna','gotta','kinda','sorta','alright','um','uh','ah','oh',
-  'hey','hi','bye','hmm',
-])
+// STOP_WORDS imported from src/utils/transcript.js (single source of truth)
 
 // ── Visual-word scoring (prefer concrete words that are easy to illustrate) ───
 const VOCAB_SET = new Set(vocabulary.map(v => v.word))
@@ -196,37 +172,33 @@ export default function App() {
 
 
   // ── Challenge trigger ─────────────────────────────────────────────────────
-  const triggerChallenge = useCallback(async (word, atSec) => {
-    try { ytPlayerRef.current?.pauseVideo() } catch (_) {}
-    setPaused(true)
+  const triggerChallenge = useCallback((word, atSec) => {
     ttsAbortRef.current = false
 
+    // Check guards before pausing — avoids a micro-stutter where the video
+    // briefly pauses then immediately resumes on a skip path.
+    const vocabEntry = vocabulary.find(v => v.word === word)
+    if (!vocabEntry) {
+      console.log(`[challenge] skip "${word}" — no curated visual`)
+      inChallengeRef.current = false
+      return
+    }
+
+    const lang        = languageRef.current
+    const translation = vocabEntry.translations?.[lang]
+    // Only skip if the translation is genuinely absent — loanwords (pizza, banana)
+    // have translations equal to the English word and are still valid challenges.
+    if (!translation) {
+      console.log(`[challenge] skip "${word}" — no translation for ${lang}`)
+      inChallengeRef.current = false
+      return
+    }
+
+    // Guards passed — safe to pause the video now
+    try { ytPlayerRef.current?.pauseVideo() } catch (_) {}
+    setPaused(true)
+
     try {
-      const vocabEntry = vocabulary.find(v => v.word === word)
-
-      // Only curated words are scheduled, so vocabEntry is always present.
-      // Skip the dynamic translation fetch — it's a 0-5s network call whose
-      // result is overwritten by vocabEntry.translations anyway.
-      if (!vocabEntry) {
-        console.log(`[challenge] skip "${word}" — no curated visual`)
-        try { ytPlayerRef.current?.playVideo() } catch (_) {}
-        setPaused(false)
-        inChallengeRef.current = false
-        return
-      }
-
-      const lang        = languageRef.current
-      const translation = vocabEntry.translations?.[lang]
-
-      // Skip if no translation for the selected language
-      if (!translation || translation.toLowerCase() === word.toLowerCase()) {
-        console.log(`[challenge] skip "${word}" — no translation for ${lang}`)
-        try { ytPlayerRef.current?.playVideo() } catch (_) {}
-        setPaused(false)
-        inChallengeRef.current = false
-        return
-      }
-
       const wordEntry = {
         word,
         emoji:      vocabEntry.emoji,
@@ -235,8 +207,6 @@ export default function App() {
         isDynamic:  false,
         foundAtSec: Math.round(atSec),
       }
-
-      // Show card immediately — WordChallenge handles TTS in 'presenting' phase
       activeWordRef.current = wordEntry
       setActiveWord(wordEntry)
     } catch (err) {
@@ -249,7 +219,8 @@ export default function App() {
 
   // ── Dismiss (success or skip) ─────────────────────────────────────────────
   const dismissChallenge = useCallback((earnedPoints, correct) => {
-    const word = activeWordRef.current?.word
+    if (!activeWordRef.current) return  // already dismissed — guard against double-calls
+    const word = activeWordRef.current.word
 
     // Detect level-up before recording (dictionary not yet updated)
     if (word && correct) {

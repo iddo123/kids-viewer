@@ -33,14 +33,12 @@ export function useSpeechRecognition() {
     if (prev) {
       prev.onend = null   // prevent stale onend from firing after we move on
       try { prev.abort() } catch (_) {}
-    }
-
-    // Small gap so the browser fully releases the previous session before we open a new one.
-    // Without this, some browsers refuse start() on the new instance.
-    setTimeout(() => {
-      if (stoppedRef.current) return
+      // Small gap so the browser fully releases the previous session.
+      // Without this, some browsers refuse start() on the new instance.
+      setTimeout(() => { if (!stoppedRef.current) _createAndStart(SR) }, 50)
+    } else {
       _createAndStart(SR)
-    }, 50)
+    }
   }
 
   function _createAndStart(SR) {

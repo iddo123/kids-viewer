@@ -166,7 +166,7 @@ export function parseJson3Transcript(rawText) {
 }
 
 // ─── Stop words ───────────────────────────────────────────────────────────────
-const STOP_WORDS = new Set([
+export const STOP_WORDS = new Set([
   'the','a','an','and','or','but','if','in','on','at','to','for','of','with',
   'by','from','is','are','was','were','be','been','being','have','has','had',
   'do','does','did','will','would','shall','should','may','might','must','can',

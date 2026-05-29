@@ -18,8 +18,22 @@ export function speakAndWait(text, lang, rate = 0.85) {
   return new Promise(resolve => {
     if (!window.speechSynthesis) { resolve(); return }
 
-    // Give the engine a tick to settle before queueing (Chrome fix)
     setTimeout(() => {
+      // On desktop Chrome the voice list loads asynchronously. If voices are
+      // already loaded and none match the requested language (common for
+      // languages like Hebrew, Arabic on Windows), skip the utterance
+      // immediately rather than waiting for the 3–6 s hard-timeout.
+      const voices = window.speechSynthesis.getVoices()
+      if (voices.length > 0 && lang !== 'en-US') {
+        const prefix   = lang.split('-')[0]
+        const hasVoice = voices.some(v => v.lang === lang || v.lang.startsWith(prefix))
+        if (!hasVoice) {
+          console.log(`[tts] no voice installed for ${lang} — skipping translation audio`)
+          resolve()
+          return
+        }
+      }
+
       const utt = new SpeechSynthesisUtterance(text)
       utt.lang  = lang
       utt.rate  = rate

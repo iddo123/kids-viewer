@@ -75,6 +75,19 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
   const attemptsRef = useRef(0)
   const [attempts, setAttempts]     = useState(0)
   const cancelRef   = useRef(false)
+  const timersRef   = useRef([])   // all pending setTimeout IDs
+
+  // Cancellable timer — cleared automatically on skip or unmount
+  const schedule = useCallback((fn, ms) => {
+    const id = setTimeout(() => {
+      timersRef.current = timersRef.current.filter(t => t !== id)
+      fn()
+    }, ms)
+    timersRef.current.push(id)
+  }, [])
+
+  // Cancel all pending timers on unmount
+  useEffect(() => () => timersRef.current.forEach(clearTimeout), [])
 
   const langInfo    = LANGUAGES.find(l => l.code === language) || LANGUAGES[0]
   const translation = wordEntry.translations?.[language] || wordEntry.word
@@ -160,16 +173,16 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
     if (correct) {
       setPhase('success')
       const pts = attemptsRef.current === 0 ? 100 : attemptsRef.current === 1 ? 50 : 25
-      setTimeout(() => onSuccess(pts), 2200)
+      schedule(() => onSuccess(pts), 2200)
     } else {
       attemptsRef.current += 1
       setAttempts(attemptsRef.current)
       if (attemptsRef.current >= MAX_ATTEMPTS) {
         setPhase('answer')
-        setTimeout(() => onSkip(), 3500)
+        schedule(() => onSkip(), 3500)
       } else {
         setPhase('fail')
-        setTimeout(() => { setTypedText(''); setPhase('presenting') }, 2500)
+        schedule(() => { setTypedText(''); setPhase('presenting') }, 2500)
       }
     }
   }
@@ -184,6 +197,8 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
   const handleSkip = () => {
     cancelRef.current = true
     cancelSpeech()
+    timersRef.current.forEach(clearTimeout)
+    timersRef.current = []
     onSkip()
   }
 
