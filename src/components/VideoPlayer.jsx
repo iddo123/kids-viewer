@@ -34,7 +34,7 @@ const YT_ERRORS = {
   150: 'This video cannot be embedded. Try a different one.',
 }
 
-export default function VideoPlayer({ videoId, paused, seekTo, onTimeUpdate, onVideoError, onVideoEnd, onContainerReady, onDurationReady, playerRef: externalPlayerRef }) {
+export default function VideoPlayer({ videoId, paused, seekTo, inChallenge, onTimeUpdate, onVideoError, onVideoEnd, onContainerReady, onDurationReady, playerRef: externalPlayerRef }) {
   const containerRef = useRef(null)
   const playerRef    = useRef(null)
   const intervalRef     = useRef(null)
@@ -145,7 +145,7 @@ export default function VideoPlayer({ videoId, paused, seekTo, onTimeUpdate, onV
   }, [seekTo])
 
   return (
-    <div className="video-wrapper">
+    <div className={`video-wrapper${inChallenge ? ' video-wrapper--challenge' : ''}`}>
       <div ref={el => { containerRef.current = el; onContainerReady?.(el) }} className="video-container" />
     </div>
   )

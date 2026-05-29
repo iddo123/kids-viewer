@@ -372,6 +372,7 @@ export default function App() {
         <VideoPlayer
           videoId={videoId}
           paused={paused}
+          inChallenge={!!activeWord}
           onTimeUpdate={handleTimeUpdate}
           onVideoError={handleVideoError}
           onVideoEnd={handleVideoEnd}
