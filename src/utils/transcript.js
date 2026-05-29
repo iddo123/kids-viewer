@@ -8,51 +8,79 @@
 // from the embedded player data, and returns JSON3 captions — no CORS issues,
 // works for all video types including music videos.
 
-export async function fetchTranscript(videoId) {
-  // The timedtext API URLs to try
-  const timedtextUrls = [
-    `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en&fmt=json3`,
-    `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en&kind=asr&fmt=json3`,
-    `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en-US&fmt=json3`,
-  ]
+// Extract ytInitialPlayerResponse JSON from a YouTube watch-page HTML string.
+// Returns the caption baseUrl (signed, can be fetched from any IP) or null.
+function extractCaptionUrl(html) {
+  const marker    = 'var ytInitialPlayerResponse = '
+  const markerIdx = html.indexOf(marker)
+  if (markerIdx === -1) return null
 
-  // 1 ── Try directly from the browser (no CORS headers from YouTube, will usually fail)
-  for (const url of timedtextUrls) {
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(5000) })
-      if (!res.ok) continue
-      const text = await res.text()
-      if (text && text.length >= 30) {
-        console.log(`[transcript] ✓ ${text.length} chars (direct) for ${videoId}`)
-        return text
+  const jsonStart = markerIdx + marker.length
+  let depth = 0, i = jsonStart, end = -1
+  for (; i < html.length; i++) {
+    const c = html[i]
+    if (c === '"') {
+      i++
+      while (i < html.length) {
+        if (html[i] === '\\') { i += 2; continue }
+        if (html[i] === '"') break
+        i++
       }
-    } catch { /* CORS blocked — try next */ }
+    } else if (c === '{') { depth++
+    } else if (c === '}') { if (--depth === 0) { end = i; break } }
   }
+  if (end === -1) return null
 
-  // 2 ── Try via CORS proxies — request runs in the user's browser (residential IP)
-  //      so YouTube serves full caption data, proxy just adds CORS headers
-  const corsProxies = [
+  let player
+  try { player = JSON.parse(html.slice(jsonStart, end + 1)) } catch { return null }
+
+  const tracks = player?.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? []
+  if (!tracks.length) return null
+
+  const track =
+    tracks.find(t => t.languageCode === 'en') ||
+    tracks.find(t => t.languageCode?.startsWith('en')) ||
+    tracks[0]
+  return track?.baseUrl ?? null
+}
+
+export async function fetchTranscript(videoId) {
+  // ── Strategy: fetch the YouTube watch page via a CORS proxy (proxy's servers
+  //   get the page HTML), extract the signed caption baseUrl, then fetch THAT
+  //   URL directly from the user's browser (residential IP, no cloud block).
+  //   YouTube caption CDN URLs use ip=0.0.0.0 (no IP binding) so they work
+  //   regardless of which IP fetched the watch page.
+
+  const watchUrl  = `https://www.youtube.com/watch?v=${videoId}`
+  const pageProxies = [
     (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
     (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
   ]
-  for (const proxy of corsProxies) {
-    for (const url of timedtextUrls) {
-      try {
-        const res = await fetch(proxy(url), { signal: AbortSignal.timeout(8000) })
-        if (!res.ok) continue
-        const text = await res.text()
-        if (text && text.length >= 30 && text.includes('"events"')) {
-          console.log(`[transcript] ✓ ${text.length} chars (cors-proxy) for ${videoId}`)
-          return text
-        }
-      } catch { /* try next */ }
-    }
+
+  for (const proxy of pageProxies) {
+    try {
+      const res = await fetch(proxy(watchUrl), { signal: AbortSignal.timeout(12000) })
+      if (!res.ok) { console.warn(`[transcript] page proxy ${proxy(watchUrl).slice(0,40)} → ${res.status}`); continue }
+      const html = await res.text()
+      const captionUrl = extractCaptionUrl(html)
+      if (!captionUrl) { console.warn('[transcript] no caption tracks in proxied page'); continue }
+
+      // Fetch the signed caption URL directly from the browser
+      const sep    = captionUrl.includes('?') ? '&' : '?'
+      const capRes = await fetch(`${captionUrl}${sep}fmt=json3`, { signal: AbortSignal.timeout(8000) })
+      if (!capRes.ok) { console.warn(`[transcript] caption fetch → ${capRes.status}`); continue }
+      const text = await capRes.text()
+      if (text && text.length >= 30 && text.includes('"events"')) {
+        console.log(`[transcript] ✓ ${text.length} chars (proxy-page+direct-cap) for ${videoId}`)
+        return text
+      }
+    } catch (e) { console.warn('[transcript] proxy-page attempt failed:', e.message) }
   }
 
-  // 3 ── Fallback: server proxy (may fail if Netlify IPs are blocked by YouTube)
+  // Fallback: server-side proxy (edge function on Cloudflare)
   try {
     const res = await fetch(`/api/transcript?v=${videoId}`, {
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(15000),
     })
     if (!res.ok) {
       const errBody = await res.text().catch(() => '')
