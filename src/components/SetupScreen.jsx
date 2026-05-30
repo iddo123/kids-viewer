@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { LANGUAGES } from '../data/vocabulary'
 import { extractVideoId } from '../utils/helpers'
 import { version } from '../../package.json'
@@ -110,15 +110,29 @@ export default function SetupScreen({ onStart, stats }) {
 
   const handleSearch = (e) => { e.preventDefault(); runSearch(searchQuery) }
 
+  const suggestTimer = useRef(null)
+
   const handleQueryChange = (e) => {
     const val = e.target.value
     setSearchQuery(val)
     setActiveSuggestion(-1)
+    clearTimeout(suggestTimer.current)
     if (!val.trim()) { setSuggestions([]); setShowSuggestions(false); return }
-    const q = val.toLowerCase()
-    const filtered = SEARCH_SUGGESTIONS.filter(s => s.includes(q)).slice(0, 8)
-    setSuggestions(filtered)
-    setShowSuggestions(filtered.length > 0)
+    suggestTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/suggest?q=${encodeURIComponent(val)}`)
+        if (!res.ok) throw new Error()
+        const items = (await res.json()).slice(0, 8)
+        if (items.length) { setSuggestions(items); setShowSuggestions(true); return }
+      } catch {}
+      // fallback: filter curated list by word-start match
+      const q = val.toLowerCase()
+      const filtered = SEARCH_SUGGESTIONS
+        .filter(s => s.startsWith(q) || s.split(' ').some(w => w.startsWith(q)))
+        .slice(0, 8)
+      setSuggestions(filtered)
+      setShowSuggestions(filtered.length > 0)
+    }, 250)
   }
 
   const handleInputKeyDown = (e) => {

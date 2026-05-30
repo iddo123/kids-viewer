@@ -141,6 +141,34 @@ const transcriptPlugin = {
   },
 }
 
+const suggestPlugin = {
+  name: 'suggest-dev-proxy',
+  configureServer(server) {
+    server.middlewares.use('/api/suggest', async (req, res) => {
+      try {
+        const qs    = req.url.includes('?') ? req.url.slice(req.url.indexOf('?') + 1) : ''
+        const query = new URLSearchParams(qs).get('q')?.trim() || ''
+        if (!query) { res.writeHead(400); res.end('Missing q'); return }
+        const upstream = await fetch(
+          `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(query)}`
+        )
+        if (!upstream.ok) throw new Error(`Suggest HTTP ${upstream.status}`)
+        const data = await upstream.json()
+        res.writeHead(200, {
+          'Content-Type':                'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control':               'public, max-age=60',
+        })
+        res.end(JSON.stringify(data[1] || []))
+      } catch (err) {
+        console.error('[suggest-proxy]', err.message)
+        res.writeHead(502)
+        res.end(err.message)
+      }
+    })
+  },
+}
+
 const searchPlugin = {
   name: 'search-dev-proxy',
   configureServer(server) {
@@ -172,5 +200,5 @@ const searchPlugin = {
 }
 
 export default defineConfig({
-  plugins: [react(), transcriptPlugin, searchPlugin],
+  plugins: [react(), transcriptPlugin, suggestPlugin, searchPlugin],
 })
