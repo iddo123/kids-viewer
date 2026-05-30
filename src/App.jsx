@@ -344,11 +344,7 @@ export default function App() {
 
   return (
     <div className="app-playing">
-      <ScoreDisplay score={score} streak={streak} onBack={handleBack} />
-
-      <button className="dict-btn" onClick={() => setShowDict(true)}>
-        📚 {stats.total} word{stats.total !== 1 ? 's' : ''}
-      </button>
+      <ScoreDisplay score={score} streak={streak} onBack={handleBack} dictCount={stats.total} onDictOpen={() => setShowDict(true)} />
 
       {statusBadge && (
         <button
