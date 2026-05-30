@@ -4,6 +4,18 @@ import { extractVideoId } from '../utils/helpers'
 import { version } from '../../package.json'
 import './SetupScreen.css'
 
+const SEARCH_SUGGESTIONS = [
+  'animals for kids', 'farm animals for children', 'ocean animals', 'jungle animals', 'dinosaurs for kids',
+  'abc alphabet song', 'phonics song for kids', 'counting numbers', 'shapes for kids', 'colors song',
+  'wheels on the bus', 'baby shark', 'nursery rhymes', 'finger family', 'old macdonald had a farm',
+  'learn english for kids', 'english words for children', 'simple english stories',
+  'fruits and vegetables', 'food in english', 'body parts for kids', 'clothes in english',
+  'weather for kids', 'days of the week', 'months of the year', 'seasons for children',
+  'emotions and feelings', 'opposites for kids', 'action words for children',
+  'transport for kids', 'vehicles for children', 'space for kids', 'underwater world',
+  'sports for kids', 'playground activities', 'classroom objects', 'school vocabulary',
+]
+
 const SUGGESTED = [
   { title: 'Baby Shark 🦈',        url: 'https://www.youtube.com/watch?v=XqZsoesa55w', id: 'XqZsoesa55w' },
   { title: 'Wheels on the Bus 🚌', url: 'https://www.youtube.com/watch?v=e_04ZrNroTo', id: 'e_04ZrNroTo' },
@@ -70,19 +82,23 @@ export default function SetupScreen({ onStart, stats }) {
   const [interval, setInterval] = useState(60)
   const [error, setError]       = useState('')
 
-  const [searchQuery,   setSearchQuery]   = useState('')
-  const [searchResults, setSearchResults] = useState([])
-  const [searchStatus,  setSearchStatus]  = useState('idle') // idle | loading | done | error
+  const [searchQuery,     setSearchQuery]     = useState('')
+  const [searchResults,   setSearchResults]   = useState([])
+  const [searchStatus,    setSearchStatus]    = useState('idle') // idle | loading | done | error
+  const [suggestions,     setSuggestions]     = useState([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [activeSuggestion, setActiveSuggestion] = useState(-1)
 
   const selectedId = extractVideoId(url)
 
-  const handleSearch = async (e) => {
-    e.preventDefault()
-    if (!searchQuery.trim()) return
+  const runSearch = async (q) => {
+    const query = q.trim()
+    if (!query) return
+    setShowSuggestions(false)
     setSearchStatus('loading')
     setSearchResults([])
     try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`)
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setSearchResults(data)
@@ -90,6 +106,42 @@ export default function SetupScreen({ onStart, stats }) {
     } catch {
       setSearchStatus('error')
     }
+  }
+
+  const handleSearch = (e) => { e.preventDefault(); runSearch(searchQuery) }
+
+  const handleQueryChange = (e) => {
+    const val = e.target.value
+    setSearchQuery(val)
+    setActiveSuggestion(-1)
+    if (!val.trim()) { setSuggestions([]); setShowSuggestions(false); return }
+    const q = val.toLowerCase()
+    const filtered = SEARCH_SUGGESTIONS.filter(s => s.includes(q)).slice(0, 8)
+    setSuggestions(filtered)
+    setShowSuggestions(filtered.length > 0)
+  }
+
+  const handleInputKeyDown = (e) => {
+    if (!showSuggestions) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveSuggestion(prev => Math.min(prev + 1, suggestions.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveSuggestion(prev => Math.max(prev - 1, -1))
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false); setActiveSuggestion(-1)
+    } else if (e.key === 'Enter' && activeSuggestion >= 0) {
+      e.preventDefault()
+      const chosen = suggestions[activeSuggestion]
+      setSearchQuery(chosen); setSuggestions([]); setShowSuggestions(false)
+      runSearch(chosen)
+    }
+  }
+
+  const pickSuggestion = (s) => {
+    setSearchQuery(s); setSuggestions([]); setShowSuggestions(false)
+    runSearch(s)
   }
 
   const handleStart = () => {
@@ -115,13 +167,32 @@ export default function SetupScreen({ onStart, stats }) {
         <div className="setup-section">
           <label className="setup-label">🔍 Search videos with captions</label>
           <form className="search-bar" onSubmit={handleSearch}>
-            <input
-              className="search-input"
-              type="text"
-              placeholder="e.g. animals for kids, colors song…"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-            />
+            <div className="search-input-wrap">
+              <input
+                className={`search-input${showSuggestions ? ' search-input--open' : ''}`}
+                type="text"
+                placeholder="e.g. animals for kids, colors song…"
+                value={searchQuery}
+                onChange={handleQueryChange}
+                onKeyDown={handleInputKeyDown}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                autoComplete="off"
+              />
+              {showSuggestions && (
+                <ul className="search-suggestions">
+                  {suggestions.map((s, i) => (
+                    <li
+                      key={s}
+                      className={`search-suggestion${i === activeSuggestion ? ' search-suggestion--active' : ''}`}
+                      onMouseDown={() => pickSuggestion(s)}
+                    >
+                      <span className="search-suggestion-icon">🔍</span>
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <button
               type="submit"
               className="search-btn"
