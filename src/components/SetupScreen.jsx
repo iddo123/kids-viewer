@@ -17,8 +17,9 @@ const SEARCH_SUGGESTIONS = [
 ]
 
 const SUGGESTED = [
-  { title: 'Baby Shark 🦈',        url: 'https://www.youtube.com/watch?v=XqZsoesa55w', id: 'XqZsoesa55w' },
-  { title: 'Wheels on the Bus 🚌', url: 'https://www.youtube.com/watch?v=e_04ZrNroTo', id: 'e_04ZrNroTo' },
+  { title: 'Peppa Pig 🐷',         url: 'https://www.youtube.com/watch?v=I9-FpvBSN-o', id: 'I9-FpvBSN-o' },
+  { title: 'Curious George 🐵',    url: 'https://www.youtube.com/watch?v=4qPzyYgfrX0', id: '4qPzyYgfrX0' },
+  { title: 'Paw Patrol 🐾',        url: 'https://www.youtube.com/watch?v=7FIDxRudCiA', id: '7FIDxRudCiA' },
 ]
 
 function VideoThumb({ id, title, selected, onClick }) {
