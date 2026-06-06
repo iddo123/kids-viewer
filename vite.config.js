@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 
 // ── Dev middleware: handles /api/transcript locally ───────────────────────────
 // In production this route is served by netlify/functions/transcript.js
@@ -200,5 +201,5 @@ const searchPlugin = {
 }
 
 export default defineConfig({
-  plugins: [react(), transcriptPlugin, suggestPlugin, searchPlugin],
+  plugins: [react(), basicSsl(), transcriptPlugin, suggestPlugin, searchPlugin],
 })

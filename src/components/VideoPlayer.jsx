@@ -71,10 +71,16 @@ export default function VideoPlayer({ videoId, paused, seekTo, inChallenge, onTi
       // autoplay is blocked and the user's tap to play doesn't reliably fire onStateChange.
       function startPolling() {
         clearInterval(intervalRef.current)
+        let tickCount = 0
         intervalRef.current = setInterval(() => {
           const p = playerRef.current
           if (!p || typeof p.getCurrentTime !== 'function') return
-          if (p.getPlayerState?.() === 1) {
+          const state = p.getPlayerState?.()
+          tickCount++
+          if (tickCount <= 10 || tickCount % 10 === 0) {
+            console.log(`[player] tick=${tickCount} state=${state} time=${p.getCurrentTime?.()?.toFixed(1)}`)
+          }
+          if (state === 1) {
             onTimeUpdateRef.current?.(p.getCurrentTime())
           }
         }, 1000)

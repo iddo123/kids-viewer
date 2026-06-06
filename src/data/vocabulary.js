@@ -105,7 +105,125 @@ export const vocabulary = [
 
   // ── Family ────────────────────────────────────────────────────────────────
   { word: 'baby',      emoji: '👶', imageQuery: 'cute,baby,smile',          translations: { he: 'תינוק',    es: 'bebé',       fr: 'bébé',        de: 'Baby',       ar: 'طفل',      ru: 'малыш',      zh: '婴儿',   pt: 'bebê'       } },
-  { word: 'family',    emoji: '👨‍👩‍👧‍👦', imageQuery: 'happy,family,together',  translations: { he: 'משפחה',    es: 'familia',    fr: 'famille',     de: 'Familie',    ar: 'عائلة',    ru: 'семья',      zh: '家庭',   pt: 'família'    } },
+  { word: 'family',   emoji: '👨‍👩‍👧‍👦', imageQuery: 'happy,family,together',   translations: { he: 'משפחה',    es: 'familia',    fr: 'famille',     de: 'Familie',    ar: 'عائلة',    ru: 'семья',      zh: '家庭',   pt: 'família'    } },
+  { word: 'boy',      emoji: '👦', imageQuery: 'happy,boy,child',          translations: { he: 'ילד',      es: 'niño',       fr: 'garçon',      de: 'Junge',      ar: 'ولد',      ru: 'мальчик',    zh: '男孩',   pt: 'menino'     } },
+  { word: 'girl',     emoji: '👧', imageQuery: 'happy,girl,child',         translations: { he: 'ילדה',     es: 'niña',       fr: 'fille',       de: 'Mädchen',    ar: 'بنت',      ru: 'девочка',    zh: '女孩',   pt: 'menina'     } },
+  { word: 'friend',   emoji: '👫', imageQuery: 'children,friends,playing', translations: { he: 'חבר',      es: 'amigo',      fr: 'ami',         de: 'Freund',     ar: 'صديق',     ru: 'друг',       zh: '朋友',   pt: 'amigo'      } },
+
+  // ── Musical Instruments ───────────────────────────────────────────────────
+  { word: 'drum',      emoji: '🥁', imageQuery: 'drum,music,beat',          translations: { he: 'תוף',      es: 'tambor',     fr: 'tambour',     de: 'Trommel',    ar: 'طبل',      ru: 'барабан',    zh: '鼓',     pt: 'tambor'     } },
+  { word: 'guitar',    emoji: '🎸', imageQuery: 'guitar,colorful,music',    translations: { he: 'גיטרה',    es: 'guitarra',   fr: 'guitare',     de: 'Gitarre',    ar: 'غيتار',    ru: 'гитара',     zh: '吉他',   pt: 'violão'     } },
+  { word: 'piano',     emoji: '🎹', imageQuery: 'piano,keys,music',         translations: { he: 'פסנתר',    es: 'piano',      fr: 'piano',       de: 'Klavier',    ar: 'بيانو',    ru: 'пианино',    zh: '钢琴',   pt: 'piano'      } },
+
+  // ── Places ────────────────────────────────────────────────────────────────
+  { word: 'beach',     emoji: '🏖️', imageQuery: 'sunny,beach,sand',         translations: { he: 'חוף ים',   es: 'playa',      fr: 'plage',       de: 'Strand',     ar: 'شاطئ',     ru: 'пляж',       zh: '海滩',   pt: 'praia'      } },
+  { word: 'farm',      emoji: '🚜', imageQuery: 'green,farm,countryside',   translations: { he: 'חווה',     es: 'granja',     fr: 'ferme',       de: 'Bauernhof',  ar: 'مزرعة',    ru: 'ферма',      zh: '农场',   pt: 'fazenda'    } },
+  { word: 'park',      emoji: '🌳', imageQuery: 'park,playground,children', translations: { he: 'פארק',     es: 'parque',     fr: 'parc',        de: 'Park',       ar: 'حديقة',    ru: 'парк',       zh: '公园',   pt: 'parque'     } },
+  { word: 'school',    emoji: '🏫', imageQuery: 'school,building,colorful', translations: { he: 'בית ספר',  es: 'escuela',    fr: 'école',       de: 'Schule',     ar: 'مدرسة',    ru: 'школа',      zh: '学校',   pt: 'escola'     } },
+  { word: 'zoo',       emoji: '🦁', imageQuery: 'zoo,animals,children',     translations: { he: 'גן חיות',  es: 'zoológico',  fr: 'zoo',         de: 'Zoo',        ar: 'حديقة حيوان',ru: 'зоопарк',  zh: '动物园', pt: 'zoológico'  } },
+
+  // ── Shapes ────────────────────────────────────────────────────────────────
+  { word: 'circle',    emoji: '⭕', imageQuery: 'circle,shape,colorful',    translations: { he: 'עיגול',    es: 'círculo',    fr: 'cercle',      de: 'Kreis',      ar: 'دائرة',    ru: 'круг',       zh: '圆形',   pt: 'círculo'    } },
+  { word: 'heart',     emoji: '❤️', imageQuery: 'red,heart,love',           translations: { he: 'לב',       es: 'corazón',    fr: 'coeur',       de: 'Herz',       ar: 'قلب',      ru: 'сердце',     zh: '心形',   pt: 'coração'    } },
+  { word: 'square',    emoji: '🟥', imageQuery: 'square,shape,colorful',    translations: { he: 'ריבוע',    es: 'cuadrado',   fr: 'carré',       de: 'Quadrat',    ar: 'مربع',     ru: 'квадрат',    zh: '正方形', pt: 'quadrado'   } },
+  { word: 'triangle',  emoji: '🔺', imageQuery: 'triangle,shape,colorful',  translations: { he: 'משולש',    es: 'triángulo',  fr: 'triangle',    de: 'Dreieck',    ar: 'مثلث',     ru: 'треугольник',zh: '三角形', pt: 'triângulo'  } },
+
+  // ── Weather ───────────────────────────────────────────────────────────────
+  { word: 'cold',      emoji: '🥶', imageQuery: 'cold,winter,snow',         translations: { he: 'קר',       es: 'frío',       fr: 'froid',       de: 'kalt',       ar: 'بارد',     ru: 'холодный',   zh: '冷',     pt: 'frio'       } },
+  { word: 'hot',       emoji: '🌡️', imageQuery: 'hot,summer,sun',           translations: { he: 'חם',       es: 'caliente',   fr: 'chaud',       de: 'heiß',       ar: 'حار',      ru: 'горячий',    zh: '热',     pt: 'quente'     } },
+
+  // ── More Animals ──────────────────────────────────────────────────────────
+  { word: 'snake',     emoji: '🐍', imageQuery: 'colorful,snake,reptile',   translations: { he: 'נחש',      es: 'serpiente',  fr: 'serpent',     de: 'Schlange',   ar: 'ثعبان',    ru: 'змея',       zh: '蛇',     pt: 'cobra'      } },
+  { word: 'tiger',     emoji: '🐯', imageQuery: 'tiger,stripes,wild',       translations: { he: 'טיגריס',   es: 'tigre',      fr: 'tigre',       de: 'Tiger',      ar: 'نمر',      ru: 'тигр',       zh: '老虎',   pt: 'tigre'      } },
+  { word: 'giraffe',   emoji: '🦒', imageQuery: 'giraffe,tall,wild',        translations: { he: "ג'ירפה",   es: 'jirafa',     fr: 'girafe',      de: 'Giraffe',    ar: 'زرافة',    ru: 'жираф',      zh: '长颈鹿', pt: 'girafa'     } },
+  { word: 'penguin',   emoji: '🐧', imageQuery: 'penguin,cute,arctic',      translations: { he: 'פינגווין', es: 'pingüino',   fr: 'pingouin',    de: 'Pinguin',    ar: 'بطريق',    ru: 'пингвин',    zh: '企鹅',   pt: 'pinguim'    } },
+  { word: 'bee',       emoji: '🐝', imageQuery: 'bee,flower,honey',         translations: { he: 'דבורה',    es: 'abeja',      fr: 'abeille',     de: 'Biene',      ar: 'نحلة',     ru: 'пчела',      zh: '蜜蜂',   pt: 'abelha'     } },
+  { word: 'owl',       emoji: '🦉', imageQuery: 'owl,wise,night',           translations: { he: 'ינשוף',    es: 'búho',       fr: 'hibou',       de: 'Eule',       ar: 'بومة',     ru: 'сова',       zh: '猫头鹰', pt: 'coruja'     } },
+  { word: 'whale',     emoji: '🐳', imageQuery: 'whale,ocean,blue',         translations: { he: 'לוויתן',   es: 'ballena',    fr: 'baleine',     de: 'Wal',        ar: 'حوت',      ru: 'кит',        zh: '鲸鱼',   pt: 'baleia'     } },
+  { word: 'zebra',     emoji: '🦓', imageQuery: 'zebra,stripes,wild',       translations: { he: 'זברה',     es: 'cebra',      fr: 'zèbre',       de: 'Zebra',      ar: 'حمار وحشي',ru: 'зебра',      zh: '斑马',   pt: 'zebra'      } },
+  { word: 'wolf',      emoji: '🐺', imageQuery: 'wolf,forest,wild',         translations: { he: 'זאב',      es: 'lobo',       fr: 'loup',        de: 'Wolf',       ar: 'ذئب',      ru: 'волк',       zh: '狼',     pt: 'lobo'       } },
+  { word: 'fox',       emoji: '🦊', imageQuery: 'fox,cute,orange',          translations: { he: 'שועל',     es: 'zorro',      fr: 'renard',      de: 'Fuchs',      ar: 'ثعلب',     ru: 'лиса',       zh: '狐狸',   pt: 'raposa'     } },
+  { word: 'chicken',   emoji: '🐔', imageQuery: 'chicken,farm,cute',        translations: { he: 'תרנגולת',  es: 'gallina',    fr: 'poulet',      de: 'Huhn',       ar: 'دجاجة',    ru: 'курица',     zh: '鸡',     pt: 'galinha'    } },
+  { word: 'camel',     emoji: '🐪', imageQuery: 'camel,desert,sand',        translations: { he: 'גמל',      es: 'camello',    fr: 'chameau',     de: 'Kamel',      ar: 'جمل',      ru: 'верблюд',    zh: '骆驼',   pt: 'camelo'     } },
+  { word: 'crocodile', emoji: '🐊', imageQuery: 'crocodile,green,river',    translations: { he: 'תנין',     es: 'cocodrilo',  fr: 'crocodile',   de: 'Krokodil',   ar: 'تمساح',    ru: 'крокодил',   zh: '鳄鱼',   pt: 'crocodilo'  } },
+  { word: 'deer',      emoji: '🦌', imageQuery: 'deer,forest,wild',         translations: { he: 'איל',      es: 'ciervo',     fr: 'cerf',        de: 'Hirsch',     ar: 'غزال',     ru: 'олень',      zh: '鹿',     pt: 'cervo'      } },
+  { word: 'dolphin',   emoji: '🐬', imageQuery: 'dolphin,ocean,jump',       translations: { he: 'דולפין',   es: 'delfín',     fr: 'dauphin',     de: 'Delfin',     ar: 'دولفين',   ru: 'дельфин',    zh: '海豚',   pt: 'golfinho'   } },
+  { word: 'parrot',    emoji: '🦜', imageQuery: 'colorful,parrot,bird',     translations: { he: 'תוכי',     es: 'loro',       fr: 'perroquet',   de: 'Papagei',    ar: 'ببغاء',    ru: 'попугай',    zh: '鹦鹉',   pt: 'papagaio'   } },
+  { word: 'shark',     emoji: '🦈', imageQuery: 'shark,ocean,blue',         translations: { he: 'כריש',     es: 'tiburón',    fr: 'requin',      de: 'Hai',        ar: 'قرش',      ru: 'акула',      zh: '鲨鱼',   pt: 'tubarão'    } },
+  { word: 'spider',    emoji: '🕷️', imageQuery: 'spider,web,nature',        translations: { he: 'עכביש',    es: 'araña',      fr: 'araignée',    de: 'Spinne',     ar: 'عنكبوت',   ru: 'паук',       zh: '蜘蛛',   pt: 'aranha'     } },
+
+  // ── More Food & Drink ─────────────────────────────────────────────────────
+  { word: 'grapes',    emoji: '🍇', imageQuery: 'purple,grapes,fruit',      translations: { he: 'ענבים',    es: 'uvas',       fr: 'raisins',     de: 'Trauben',    ar: 'عنب',      ru: 'виноград',   zh: '葡萄',   pt: 'uvas'       } },
+  { word: 'watermelon',emoji: '🍉', imageQuery: 'watermelon,red,summer',    translations: { he: 'אבטיח',    es: 'sandía',     fr: 'pastèque',    de: 'Wassermelone',ar: 'بطيخ',    ru: 'арбуз',      zh: '西瓜',   pt: 'melancia'   } },
+  { word: 'lemon',     emoji: '🍋', imageQuery: 'lemon,yellow,citrus',      translations: { he: 'לימון',    es: 'limón',      fr: 'citron',      de: 'Zitrone',    ar: 'ليمون',    ru: 'лимон',      zh: '柠檬',   pt: 'limão'      } },
+  { word: 'corn',      emoji: '🌽', imageQuery: 'corn,yellow,vegetable',    translations: { he: 'תירס',     es: 'maíz',       fr: 'maïs',        de: 'Mais',       ar: 'ذرة',      ru: 'кукуруза',   zh: '玉米',   pt: 'milho'      } },
+  { word: 'ice cream', emoji: '🍦', imageQuery: 'icecream,colorful,sweet',  translations: { he: 'גלידה',    es: 'helado',     fr: 'glace',       de: 'Eis',        ar: 'آيس كريم', ru: 'мороженое',  zh: '冰淇淋', pt: 'sorvete'    } },
+  { word: 'cookie',    emoji: '🍪', imageQuery: 'cookie,sweet,baked',       translations: { he: 'עוגייה',   es: 'galleta',    fr: 'biscuit',     de: 'Keks',       ar: 'بسكويت',   ru: 'печенье',    zh: '饼干',   pt: 'biscoito'   } },
+  { word: 'chocolate', emoji: '🍫', imageQuery: 'chocolate,dark,sweet',     translations: { he: 'שוקולד',   es: 'chocolate',  fr: 'chocolat',    de: 'Schokolade', ar: 'شوكولاتة', ru: 'шоколад',    zh: '巧克力', pt: 'chocolate'  } },
+  { word: 'cherry',    emoji: '🍒', imageQuery: 'red,cherry,fruit',         translations: { he: 'דובדבן',   es: 'cereza',     fr: 'cerise',      de: 'Kirsche',    ar: 'كرز',      ru: 'вишня',      zh: '樱桃',   pt: 'cereja'     } },
+  { word: 'mango',     emoji: '🥭', imageQuery: 'mango,tropical,fruit',     translations: { he: 'מנגו',     es: 'mango',      fr: 'mangue',      de: 'Mango',      ar: 'مانجو',    ru: 'манго',      zh: '芒果',   pt: 'manga'      } },
+  { word: 'mushroom',  emoji: '🍄', imageQuery: 'mushroom,forest,nature',   translations: { he: 'פטרייה',   es: 'hongo',      fr: 'champignon',  de: 'Pilz',       ar: 'فطر',      ru: 'гриб',       zh: '蘑菇',   pt: 'cogumelo'   } },
+  { word: 'pineapple', emoji: '🍍', imageQuery: 'pineapple,tropical,fruit', translations: { he: 'אנanas',   es: 'piña',       fr: 'ananas',      de: 'Ananas',     ar: 'أناناس',   ru: 'ананас',     zh: '菠萝',   pt: 'abacaxi'    } },
+  { word: 'potato',    emoji: '🥔', imageQuery: 'potato,vegetable,food',    translations: { he: 'תפוח אדמה',es: 'patata',     fr: 'pomme de terre',de: 'Kartoffel', ar: 'بطاطا',    ru: 'картофель',  zh: '土豆',   pt: 'batata'     } },
+  { word: 'rice',      emoji: '🍚', imageQuery: 'white,rice,bowl',          translations: { he: 'אורז',     es: 'arroz',      fr: 'riz',         de: 'Reis',       ar: 'أرز',      ru: 'рис',        zh: '米饭',   pt: 'arroz'      } },
+  { word: 'tomato',    emoji: '🍅', imageQuery: 'red,tomato,vegetable',     translations: { he: 'עגבנייה',  es: 'tomate',     fr: 'tomate',      de: 'Tomate',     ar: 'طماطم',    ru: 'помидор',    zh: '西红柿', pt: 'tomate'     } },
+
+  // ── More Colors ───────────────────────────────────────────────────────────
+  { word: 'brown',     emoji: '🟤', imageQuery: 'brown,color,earth',        translations: { he: 'חום',      es: 'marrón',     fr: 'marron',      de: 'braun',      ar: 'بني',      ru: 'коричневый', zh: '棕色',   pt: 'marrom'     } },
+  { word: 'gray',      emoji: '🩶', imageQuery: 'gray,color,stone',         translations: { he: 'אפור',     es: 'gris',       fr: 'gris',        de: 'grau',       ar: 'رمادي',    ru: 'серый',      zh: '灰色',   pt: 'cinza'      } },
+
+  // ── More Body Parts ───────────────────────────────────────────────────────
+  { word: 'foot',      emoji: '🦶', imageQuery: 'foot,barefoot,beach',      translations: { he: 'כף רגל',   es: 'pie',        fr: 'pied',        de: 'Fuß',        ar: 'قدم',      ru: 'ступня',     zh: '脚',     pt: 'pé'         } },
+  { word: 'arm',       emoji: '💪', imageQuery: 'arm,strong,muscle',        translations: { he: 'זרוע',     es: 'brazo',      fr: 'bras',        de: 'Arm',        ar: 'ذراع',     ru: 'рука',       zh: '手臂',   pt: 'braço'      } },
+  { word: 'finger',    emoji: '👆', imageQuery: 'finger,hand,pointing',     translations: { he: 'אצבע',     es: 'dedo',       fr: 'doigt',       de: 'Finger',     ar: 'إصبع',     ru: 'палец',      zh: '手指',   pt: 'dedo'       } },
+  { word: 'tooth',     emoji: '🦷', imageQuery: 'tooth,smile,white',        translations: { he: 'שן',       es: 'diente',     fr: 'dent',        de: 'Zahn',       ar: 'سن',       ru: 'зуб',        zh: '牙齿',   pt: 'dente'      } },
+
+  // ── More Actions ──────────────────────────────────────────────────────────
+  { word: 'eat',       emoji: '🍽️', imageQuery: 'child,eating,food',        translations: { he: 'לאכול',    es: 'comer',      fr: 'manger',      de: 'essen',      ar: 'يأكل',     ru: 'есть',       zh: '吃',     pt: 'comer'      } },
+  { word: 'drink',     emoji: '🥤', imageQuery: 'child,drinking,juice',      translations: { he: 'לשתות',    es: 'beber',      fr: 'boire',       de: 'trinken',    ar: 'يشرب',     ru: 'пить',       zh: '喝',     pt: 'beber'      } },
+  { word: 'read',      emoji: '📖', imageQuery: 'child,reading,book',        translations: { he: 'לקרוא',    es: 'leer',       fr: 'lire',        de: 'lesen',      ar: 'يقرأ',     ru: 'читать',     zh: '读',     pt: 'ler'        } },
+  { word: 'play',      emoji: '🎮', imageQuery: 'children,playing,fun',      translations: { he: 'לשחק',     es: 'jugar',      fr: 'jouer',       de: 'spielen',    ar: 'يلعب',     ru: 'играть',     zh: '玩',     pt: 'brincar'    } },
+  { word: 'walk',      emoji: '🚶', imageQuery: 'child,walking,park',        translations: { he: 'ללכת',     es: 'caminar',    fr: 'marcher',     de: 'gehen',      ar: 'يمشي',     ru: 'идти',       zh: '走',     pt: 'andar'      } },
+  { word: 'fly',       emoji: '🕊️', imageQuery: 'bird,flying,sky',           translations: { he: 'לעוף',     es: 'volar',      fr: 'voler',       de: 'fliegen',    ar: 'يطير',     ru: 'летать',     zh: '飞',     pt: 'voar'       } },
+  { word: 'build',     emoji: '🏗️', imageQuery: 'child,building,blocks',     translations: { he: 'לבנות',    es: 'construir',  fr: 'construire',  de: 'bauen',      ar: 'يبني',     ru: 'строить',    zh: '建造',   pt: 'construir'  } },
+  { word: 'catch',     emoji: '🤲', imageQuery: 'child,catching,ball',       translations: { he: 'לתפוס',    es: 'atrapar',    fr: 'attraper',    de: 'fangen',     ar: 'يمسك',     ru: 'ловить',     zh: '接住',   pt: 'pegar'      } },
+  { word: 'climb',     emoji: '🧗', imageQuery: 'child,climbing,tree',       translations: { he: 'לטפס',     es: 'trepar',     fr: 'grimper',     de: 'klettern',   ar: 'يتسلق',    ru: 'лазить',     zh: '爬',     pt: 'escalar'    } },
+  { word: 'close',     emoji: '🚪', imageQuery: 'door,closing,shut',         translations: { he: 'לסגור',    es: 'cerrar',     fr: 'fermer',      de: 'schließen',  ar: 'يغلق',     ru: 'закрывать',  zh: '关',     pt: 'fechar'     } },
+  { word: 'cook',      emoji: '🍳', imageQuery: 'cooking,kitchen,food',      translations: { he: 'לבשל',     es: 'cocinar',    fr: 'cuisiner',    de: 'kochen',     ar: 'يطبخ',     ru: 'готовить',   zh: '烹饪',   pt: 'cozinhar'   } },
+  { word: 'laugh',     emoji: '😄', imageQuery: 'child,laughing,happy',      translations: { he: 'לצחוק',    es: 'reír',       fr: 'rire',        de: 'lachen',     ar: 'يضحك',     ru: 'смеяться',   zh: '笑',     pt: 'rir'        } },
+  { word: 'open',      emoji: '📂', imageQuery: 'open,door,entrance',        translations: { he: 'לפתוח',    es: 'abrir',      fr: 'ouvrir',      de: 'öffnen',     ar: 'يفتح',     ru: 'открывать',  zh: '开',     pt: 'abrir'      } },
+  { word: 'throw',     emoji: '🎯', imageQuery: 'child,throwing,ball',       translations: { he: 'לזרוק',    es: 'lanzar',     fr: 'lancer',      de: 'werfen',     ar: 'يرمي',     ru: 'бросать',    zh: '扔',     pt: 'lançar'     } },
+
+  // ── More Nature ───────────────────────────────────────────────────────────
+  { word: 'river',     emoji: '🏞️', imageQuery: 'blue,river,nature',        translations: { he: 'נהר',      es: 'río',        fr: 'rivière',     de: 'Fluss',      ar: 'نهر',      ru: 'река',       zh: '河流',   pt: 'rio'        } },
+  { word: 'wind',      emoji: '💨', imageQuery: 'wind,breeze,nature',        translations: { he: 'רוח',      es: 'viento',     fr: 'vent',        de: 'Wind',       ar: 'ريح',      ru: 'ветер',      zh: '风',     pt: 'vento'      } },
+  { word: 'grass',     emoji: '🌿', imageQuery: 'green,grass,field',         translations: { he: 'דשא',      es: 'hierba',     fr: 'herbe',       de: 'Gras',       ar: 'عشب',      ru: 'трава',      zh: '草',     pt: 'grama'      } },
+
+  // ── More Home & Objects ───────────────────────────────────────────────────
+  { word: 'bed',       emoji: '🛏️', imageQuery: 'cozy,bed,bedroom',         translations: { he: 'מיטה',     es: 'cama',       fr: 'lit',         de: 'Bett',       ar: 'سرير',     ru: 'кровать',    zh: '床',     pt: 'cama'       } },
+  { word: 'window',    emoji: '🪟', imageQuery: 'colorful,window,house',     translations: { he: 'חלון',     es: 'ventana',    fr: 'fenêtre',     de: 'Fenster',    ar: 'نافذة',    ru: 'окно',       zh: '窗户',   pt: 'janela'     } },
+  { word: 'phone',     emoji: '📱', imageQuery: 'smartphone,colorful,tech',  translations: { he: 'טלפון',    es: 'teléfono',   fr: 'téléphone',   de: 'Telefon',    ar: 'هاتف',     ru: 'телефон',    zh: '电话',   pt: 'telefone'   } },
+  { word: 'cup',       emoji: '☕', imageQuery: 'colorful,cup,mug',          translations: { he: 'כוס',      es: 'taza',       fr: 'tasse',       de: 'Tasse',      ar: 'كوب',      ru: 'кружка',     zh: '杯子',   pt: 'xícara'     } },
+  { word: 'toy',       emoji: '🧸', imageQuery: 'colorful,toy,children',     translations: { he: 'צעצוע',    es: 'juguete',    fr: 'jouet',       de: 'Spielzeug',  ar: 'لعبة',     ru: 'игрушка',    zh: '玩具',   pt: 'brinquedo'  } },
+  { word: 'key',       emoji: '🔑', imageQuery: 'golden,key,door',           translations: { he: 'מפתח',     es: 'llave',      fr: 'clé',         de: 'Schlüssel',  ar: 'مفتاح',    ru: 'ключ',       zh: '钥匙',   pt: 'chave'      } },
+
+  // ── More Transport ────────────────────────────────────────────────────────
+  { word: 'bus',       emoji: '🚌', imageQuery: 'yellow,bus,school',         translations: { he: 'אוטובוס',  es: 'autobús',    fr: 'bus',         de: 'Bus',        ar: 'حافلة',    ru: 'автобус',    zh: '公共汽车',pt: 'ônibus'    } },
+  { word: 'bicycle',   emoji: '🚲', imageQuery: 'colorful,bicycle,riding',   translations: { he: 'אופניים',  es: 'bicicleta',  fr: 'vélo',        de: 'Fahrrad',    ar: 'دراجة',    ru: 'велосипед',  zh: '自行车', pt: 'bicicleta'  } },
+  { word: 'truck',     emoji: '🚚', imageQuery: 'big,truck,road',            translations: { he: 'משאית',    es: 'camión',     fr: 'camion',      de: 'Lastwagen',  ar: 'شاحنة',    ru: 'грузовик',   zh: '卡车',   pt: 'caminhão'   } },
+  { word: 'rocket',    emoji: '🚀', imageQuery: 'rocket,space,launch',       translations: { he: 'רקטה',     es: 'cohete',     fr: 'fusée',       de: 'Rakete',     ar: 'صاروخ',    ru: 'ракета',     zh: '火箭',   pt: 'foguete'    } },
+
+  // ── More Clothing ─────────────────────────────────────────────────────────
+  { word: 'shirt',     emoji: '👕', imageQuery: 'colorful,shirt,clothing',   translations: { he: 'חולצה',    es: 'camisa',     fr: 'chemise',     de: 'Hemd',       ar: 'قميص',     ru: 'рубашка',    zh: '衬衫',   pt: 'camisa'     } },
+  { word: 'pants',     emoji: '👖', imageQuery: 'jeans,pants,clothing',      translations: { he: 'מכנסיים',  es: 'pantalones', fr: 'pantalon',    de: 'Hose',       ar: 'بنطال',    ru: 'брюки',      zh: '裤子',   pt: 'calça'      } },
+  { word: 'sock',      emoji: '🧦', imageQuery: 'colorful,socks,fun',        translations: { he: 'גרב',      es: 'calcetín',   fr: 'chaussette',  de: 'Socke',      ar: 'جورب',     ru: 'носок',      zh: '袜子',   pt: 'meia'       } },
+  { word: 'coat',      emoji: '🧥', imageQuery: 'warm,coat,winter',          translations: { he: 'מעיל',     es: 'abrigo',     fr: 'manteau',     de: 'Mantel',     ar: 'معطف',     ru: 'пальто',     zh: '外套',   pt: 'casaco'     } },
+
+  // ── Feelings ──────────────────────────────────────────────────────────────
+  { word: 'happy',     emoji: '😊', imageQuery: 'child,happy,smile',         translations: { he: 'שמח',      es: 'feliz',      fr: 'heureux',     de: 'glücklich',  ar: 'سعيد',     ru: 'счастливый', zh: '快乐',   pt: 'feliz'      } },
+  { word: 'sad',       emoji: '😢', imageQuery: 'child,sad,upset',           translations: { he: 'עצוב',     es: 'triste',     fr: 'triste',      de: 'traurig',    ar: 'حزين',     ru: 'грустный',   zh: '悲伤',   pt: 'triste'     } },
+  { word: 'angry',     emoji: '😠', imageQuery: 'child,angry,expression',    translations: { he: 'כועס',     es: 'enojado',    fr: 'en colère',   de: 'wütend',     ar: 'غاضب',     ru: 'злой',       zh: '生气',   pt: 'bravo'      } },
+  { word: 'scared',    emoji: '😨', imageQuery: 'child,scared,surprised',    translations: { he: 'מפוחד',    es: 'asustado',   fr: 'effrayé',     de: 'ängstlich',  ar: 'خائف',     ru: 'испуганный', zh: '害怕',   pt: 'assustado'  } },
 ]
 
 export const LANGUAGES = [
