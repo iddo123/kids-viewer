@@ -64,7 +64,7 @@ const CHALLENGE_TIMEOUT = 10   // seconds per attempt
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }) {
-  const { listening, error: micError, startListening, supported } = useSpeechRecognition()
+  const { listening, error: micError, startListening, stopListening, supported } = useSpeechRecognition()
 
   // Always start at 'presenting' — card shows, then TTS plays
   const [phase, setPhase]           = useState('presenting')
@@ -74,8 +74,12 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
   const [timeLeft, setTimeLeft]     = useState(CHALLENGE_TIMEOUT)
   const attemptsRef = useRef(0)
   const [attempts, setAttempts]     = useState(0)
-  const cancelRef   = useRef(false)
-  const timersRef   = useRef([])   // all pending setTimeout IDs
+  const cancelRef        = useRef(false)
+  const timersRef        = useRef([])   // all pending setTimeout IDs
+  const phaseRef         = useRef('presenting')
+  const failHandledRef   = useRef(false)
+
+  useEffect(() => { phaseRef.current = phase }, [phase])
 
   // Cancellable timer — cleared automatically on skip or unmount
   const schedule = useCallback((fn, ms) => {
@@ -162,18 +166,28 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
   // ── Countdown timer ───────────────────────────────────────────────────────
   useEffect(() => {
     if (phase !== 'listening' && phase !== 'typing') return
+    failHandledRef.current = false   // reset guard for each new listening session
     setTimeLeft(CHALLENGE_TIMEOUT)
     const id = setInterval(() => {
       setTimeLeft(prev => {
-        if (prev <= 1) { clearInterval(id); handleFail(); return 0 }
+        if (prev <= 1) {
+          clearInterval(id)
+          // Guard prevents double-fire from React StrictMode's double-invocation of state updaters
+          if (!failHandledRef.current) {
+            failHandledRef.current = true
+            handleFail()
+          }
+          return 0
+        }
         return prev - 1
       })
     }, 1000)
     return () => clearInterval(id)
   }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Fail: one retry with re-presentation, then skip ───────────────────────
+  // ── Fail: timer expired — one retry with re-presentation, then skip ─────────
   function handleFail() {
+    stopListening()
     attemptsRef.current += 1
     setAttempts(attemptsRef.current)
     if (attemptsRef.current >= MAX_ATTEMPTS) {
@@ -181,7 +195,6 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
       schedule(() => onSkip(), 3500)
     } else {
       setPhase('fail')
-      // Brief feedback, then re-present the word (double-speak again)
       schedule(() => { setTypedText(''); setSpokenText(''); setPhase('presenting') }, 800)
     }
   }
@@ -194,7 +207,14 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
       const pts = attemptsRef.current === 0 ? 100 : 50
       schedule(() => onSuccess(pts), 2200)
     } else {
-      handleFail()
+      // Wrong guess within the 10s window — show feedback and reopen mic.
+      // Do NOT call handleFail; that only fires when the timer expires.
+      schedule(() => {
+        if (phaseRef.current === 'listening') {
+          setSpokenText('')
+          triggerMic()
+        }
+      }, 700)
     }
   }
 
@@ -349,6 +369,11 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
                     {listening && <span className="rec-dot" />}
                   </button>
                 </div>
+                {spokenText && (
+                  <div className="heard-text heard-text--retry">
+                    😅 I heard: <em>"{spokenText}"</em> — try again!
+                  </div>
+                )}
                 <button className="switch-mode-btn" onClick={() => { setUseTypeMode(true); setPhase('typing') }}>
                   ⌨️ Type instead
                 </button>

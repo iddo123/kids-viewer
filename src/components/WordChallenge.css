@@ -249,6 +249,12 @@
 .heard-text em {
   font-style: normal;
 }
+.heard-text--retry {
+  font-size: 0.9rem;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  margin-top: 4px;
+}
 
 /* ── Activity section (speaking / listening / typing) ── */
 .activity-section {
