@@ -18,7 +18,7 @@ const SEARCH_SUGGESTIONS = [
 
 const SUGGESTED = [
   { title: 'Peppa Pig 🐷',         url: 'https://www.youtube.com/watch?v=I9-FpvBSN-o', id: 'I9-FpvBSN-o' },
-  { title: 'Curious George 🐵',    url: 'https://www.youtube.com/watch?v=4qPzyYgfrX0', id: '4qPzyYgfrX0' },
+  { title: 'Bluey 🐶',             url: 'https://www.youtube.com/watch?v=61fSXCbzF1M', id: '61fSXCbzF1M' },
   { title: 'Paw Patrol 🐾',        url: 'https://www.youtube.com/watch?v=7FIDxRudCiA', id: '7FIDxRudCiA' },
 ]
 
