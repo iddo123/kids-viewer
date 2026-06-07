@@ -59,8 +59,8 @@ function formatTime(sec) {
   return `${m}:${s}`
 }
 
-const MAX_ATTEMPTS      = 3
-const CHALLENGE_TIMEOUT = 15   // seconds before auto-skip
+const MAX_ATTEMPTS      = 2
+const CHALLENGE_TIMEOUT = 10   // seconds per attempt
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }) {
@@ -101,16 +101,21 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
     cancelRef.current = false
 
     async function present() {
-      // Cancel any lingering speech first, then give engine a moment to settle
       cancelSpeech()
       await sleep(100)
 
+      // First pass
       if (cancelRef.current) return
-      console.log(`[tts] speaking word: "${wordEntry.word}" (en-US)`)
       await speakAndWait(wordEntry.word, 'en-US')
-
       if (cancelRef.current) return
-      console.log(`[tts] speaking translation: "${translation}" (${ttsLocale})`)
+      await speakAndWait(translation, ttsLocale)
+
+      // 1-second gap then repeat
+      if (cancelRef.current) return
+      await sleep(1000)
+      if (cancelRef.current) return
+      await speakAndWait(wordEntry.word, 'en-US')
+      if (cancelRef.current) return
       await speakAndWait(translation, ttsLocale)
 
       if (cancelRef.current) return
@@ -160,32 +165,36 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
     setTimeLeft(CHALLENGE_TIMEOUT)
     const id = setInterval(() => {
       setTimeLeft(prev => {
-        if (prev <= 1) { clearInterval(id); handleSkip(); return 0 }
+        if (prev <= 1) { clearInterval(id); handleFail(); return 0 }
         return prev - 1
       })
     }, 1000)
     return () => clearInterval(id)
   }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Fail: one retry with re-presentation, then skip ───────────────────────
+  function handleFail() {
+    attemptsRef.current += 1
+    setAttempts(attemptsRef.current)
+    if (attemptsRef.current >= MAX_ATTEMPTS) {
+      setPhase('answer')
+      schedule(() => onSkip(), 3500)
+    } else {
+      setPhase('fail')
+      // Brief feedback, then re-present the word (double-speak again)
+      schedule(() => { setTypedText(''); setSpokenText(''); setPhase('presenting') }, 800)
+    }
+  }
+
   // ── Answer ────────────────────────────────────────────────────────────────
   function handleAnswer(text) {
     const correct = checkPronunciation(text, wordEntry.word)
     if (correct) {
       setPhase('success')
-      const pts = attemptsRef.current === 0 ? 100 : attemptsRef.current === 1 ? 50 : 25
+      const pts = attemptsRef.current === 0 ? 100 : 50
       schedule(() => onSuccess(pts), 2200)
     } else {
-      attemptsRef.current += 1
-      setAttempts(attemptsRef.current)
-      if (attemptsRef.current >= MAX_ATTEMPTS) {
-        setPhase('answer')
-        schedule(() => onSkip(), 3500)
-      } else {
-        setPhase('fail')
-        // Skip TTS replay — go straight back to listening so the mic stays
-        // effectively open. 600ms is enough to register the shake + "I heard" feedback.
-        schedule(() => { setTypedText(''); setPhase('listening') }, 600)
-      }
+      handleFail()
     }
   }
 
