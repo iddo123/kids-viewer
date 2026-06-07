@@ -1,7 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
 
-const MAX_NO_SPEECH_RETRIES = 4   // auto-restart mic this many times on silence
-
 export function useSpeechRecognition() {
   const [listening, setListening]   = useState(false)
   const [transcript, setTranscript] = useState('')
@@ -11,7 +9,6 @@ export function useSpeechRecognition() {
   )
   const recRef          = useRef(null)
   const onResultRef     = useRef(null)
-  const retriesRef      = useRef(0)
   const stoppedRef      = useRef(false)   // true when we intentionally stopped
 
   const startListening = useCallback((onResult) => {
@@ -19,7 +16,6 @@ export function useSpeechRecognition() {
     if (!SR) { setError('not-supported'); return }
 
     onResultRef.current = onResult
-    retriesRef.current  = 0
     stoppedRef.current  = false
     setTranscript('')
     setError(null)
@@ -77,15 +73,10 @@ export function useSpeechRecognition() {
       console.warn('[speech] error:', e.error)
 
       if (e.error === 'no-speech' && !stoppedRef.current) {
-        // Auto-restart on silence — kid may just be slow to respond
-        if (retriesRef.current < MAX_NO_SPEECH_RETRIES) {
-          retriesRef.current++
-          console.log(`[speech] no-speech — retrying (${retriesRef.current}/${MAX_NO_SPEECH_RETRIES})`)
-          setTimeout(() => {
-            if (!stoppedRef.current) _start(SR)
-          }, 100)
-          return
-        }
+        // Keep retrying indefinitely — the challenge timer calls stopListening()
+        // when time is up, which sets stoppedRef = true and ends the loop.
+        setTimeout(() => { if (!stoppedRef.current) _start(SR) }, 100)
+        return
       }
 
       setError(e.error)
@@ -98,8 +89,11 @@ export function useSpeechRecognition() {
       rec.start()
     } catch (err) {
       console.warn('[speech] start() threw:', err.message)
-      setError('not-supported')
-      setListening(false)
+      // InvalidStateError means the browser hasn't fully released the previous
+      // session yet. Retry after a longer gap rather than giving up.
+      if (!stoppedRef.current) {
+        setTimeout(() => { if (!stoppedRef.current) _createAndStart(SR) }, 150)
+      }
     }
   }
 

@@ -220,7 +220,7 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
           setSpokenText('')
           triggerMic()
         }
-      }, 700)
+      }, 300)
     }
   }
 
