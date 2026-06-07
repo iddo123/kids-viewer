@@ -104,34 +104,40 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
     if (phase !== 'presenting') return
     cancelRef.current = false
 
+    // Use a local flag so StrictMode's double-invoke doesn't let two
+    // concurrent present() calls both complete (the shared cancelRef gets
+    // reset to false by the second setup before the first checks it).
+    let cancelled = false
+
     async function present() {
       cancelSpeech()
       await sleep(100)
 
       // First pass
-      if (cancelRef.current) return
+      if (cancelled) return
       await speakAndWait(wordEntry.word, 'en-US')
-      if (cancelRef.current) return
+      if (cancelled) return
       await speakAndWait(translation, ttsLocale)
 
       // 1-second gap then repeat
-      if (cancelRef.current) return
+      if (cancelled) return
       await sleep(1000)
-      if (cancelRef.current) return
+      if (cancelled) return
       await speakAndWait(wordEntry.word, 'en-US')
-      if (cancelRef.current) return
+      if (cancelled) return
       await speakAndWait(translation, ttsLocale)
 
-      if (cancelRef.current) return
+      if (cancelled) return
       playBeep()
       await sleep(150)
 
-      if (cancelRef.current) return
+      if (cancelled) return
       setPhase(canUseMic ? 'listening' : 'typing')
     }
 
     present()
     return () => {
+      cancelled = true
       cancelRef.current = true
       cancelSpeech()
     }
@@ -157,7 +163,7 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
 
   // ── Mic error → fall back to typing ──────────────────────────────────────
   useEffect(() => {
-    if (phase === 'listening' && micError && micError !== 'no-speech') {
+    if (phase === 'listening' && micError && micError !== 'no-speech' && micError !== 'aborted') {
       setUseTypeMode(true)
       setPhase('typing')
     }

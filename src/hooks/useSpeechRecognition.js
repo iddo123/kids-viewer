@@ -31,7 +31,11 @@ export function useSpeechRecognition() {
     const prev = recRef.current
     recRef.current = null
     if (prev) {
-      prev.onend = null   // prevent stale onend from firing after we move on
+      // Null all handlers before abort — some browsers fire onerror('aborted')
+      // on an already-completed session, which would incorrectly switch to typing mode.
+      prev.onend    = null
+      prev.onerror  = null
+      prev.onresult = null
       try { prev.abort() } catch (_) {}
       // Small gap so the browser fully releases the previous session.
       // Without this, some browsers refuse start() on the new instance.
