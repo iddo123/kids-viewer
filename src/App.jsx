@@ -382,8 +382,11 @@ export default function App() {
           <div className="no-captions-icon">📄</div>
           <div className="no-captions-text">
             <strong>No captions found for this video</strong>
-            <span>Word challenges are not available — just enjoy watching!</span>
+            <span>Word challenges won't be available. Try a video with closed captions for the full experience.</span>
           </div>
+          <button className="no-captions-back-btn" onClick={handleBack}>
+            ← Try a different video
+          </button>
         </div>
       )}
 
