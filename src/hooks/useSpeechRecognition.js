@@ -83,14 +83,25 @@ export function useSpeechRecognition() {
       setListening(false)
     }
 
-    rec.onend = () => setListening(false)
+    rec.onend = () => {
+      setListening(false)
+      // Browsers can terminate a session silently (no onerror) via auto-timeout
+      // or a network hiccup. Restart whenever onend fires without an intentional
+      // stop — the no-speech onerror path handles the common silence case but
+      // does not cover all browser-side terminations.
+      if (!stoppedRef.current) {
+        setTimeout(() => { if (!stoppedRef.current) _start(SR) }, 100)
+      }
+    }
 
     try {
       rec.start()
     } catch (err) {
       console.warn('[speech] start() threw:', err.message)
-      // InvalidStateError means the browser hasn't fully released the previous
-      // session yet. Retry after a longer gap rather than giving up.
+      // Null handlers so the failed rec can't fire stale events after we retry.
+      rec.onstart = null; rec.onresult = null; rec.onerror = null; rec.onend = null
+      // InvalidStateError: browser hasn't released the previous session yet.
+      // Retry after a longer gap rather than giving up.
       if (!stoppedRef.current) {
         setTimeout(() => { if (!stoppedRef.current) _createAndStart(SR) }, 150)
       }
