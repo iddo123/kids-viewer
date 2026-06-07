@@ -213,14 +213,14 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
       const pts = attemptsRef.current === 0 ? 100 : 50
       schedule(() => onSuccess(pts), 2200)
     } else {
-      // Wrong guess within the 10s window — show feedback and reopen mic.
-      // Do NOT call handleFail; that only fires when the timer expires.
+      // Wrong guess within the 10s window — reopen the mic after a minimal
+      // engine-reset gap. Use startListening directly (not triggerMic) so
+      // the "I heard: X" feedback stays visible until the next result arrives.
       schedule(() => {
         if (phaseRef.current === 'listening') {
-          setSpokenText('')
-          triggerMic()
+          startListening((best, allAlts) => speechCallbackRef.current(best, allAlts))
         }
-      }, 300)
+      }, 100)
     }
   }
 
