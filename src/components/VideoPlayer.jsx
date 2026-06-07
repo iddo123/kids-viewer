@@ -30,8 +30,8 @@ const YT_ERRORS = {
   2:   'Invalid video ID.',
   5:   'This video cannot play in this browser.',
   100: 'Video not found — it may have been removed.',
-  101: 'This video cannot be embedded. Try a different one.',
-  150: 'This video cannot be embedded. Try a different one.',
+  101: 'This video isn\'t supported — the owner has disabled playback on external sites. Please try a different one.',
+  150: 'This video isn\'t supported — the owner has disabled playback on external sites. Please try a different one.',
 }
 
 export default function VideoPlayer({ videoId, paused, seekTo, inChallenge, onTimeUpdate, onVideoError, onVideoEnd, onContainerReady, onDurationReady, playerRef: externalPlayerRef }) {
