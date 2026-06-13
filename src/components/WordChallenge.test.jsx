@@ -6,11 +6,12 @@ import WordChallenge from './WordChallenge'
 
 // TTS: all async calls resolve immediately so present() completes in one flush
 vi.mock('../utils/tts', () => ({
-  sleep:        () => Promise.resolve(),
-  speakAndWait: () => Promise.resolve(),
-  cancelSpeech: vi.fn(),
-  playBeep:     vi.fn(),
-  LANG_TTS:     {},
+  sleep:            () => Promise.resolve(),
+  speakAndWait:     () => Promise.resolve(),
+  speakTranslation: () => Promise.resolve(),
+  cancelSpeech:     vi.fn(),
+  playBeep:         vi.fn(),
+  LANG_TTS:         {},
 }))
 
 // Speech recognition hook: controlled via module-level vars
@@ -132,9 +133,55 @@ describe('WordChallenge', () => {
     const onSkip = vi.fn()
     render(<WordChallenge wordEntry={WORD_ENTRY} language="he" onSuccess={vi.fn()} onSkip={onSkip} />)
     await flushPresent()
-    // Simulate the timer updater being called twice (StrictMode scenario)
-    // We verify onSkip is not called prematurely after just one expiry
     await act(async () => { vi.advanceTimersByTime(10_000) })
     expect(onSkip).not.toHaveBeenCalled()   // still in retry, not skipped yet
+  })
+
+  it('skip button calls onSkip immediately without waiting for timers', async () => {
+    const onSkip = vi.fn()
+    const { getByText } = render(
+      <WordChallenge wordEntry={WORD_ENTRY} language="he" onSuccess={vi.fn()} onSkip={onSkip} />
+    )
+    await flushPresent()
+    await act(async () => { getByText(/Skip for now/i).click() })
+    expect(onSkip).toHaveBeenCalledOnce()
+  })
+
+  it('each wrong answer restarts the mic (mic stays alive across multiple wrong guesses)', async () => {
+    render(<WordChallenge wordEntry={WORD_ENTRY} language="he" onSuccess={vi.fn()} onSkip={vi.fn()} />)
+    await flushPresent()
+    // Three consecutive wrong answers
+    for (let i = 0; i < 3; i++) {
+      await act(async () => {
+        capturedCb('dog', ['dog'])
+        vi.advanceTimersByTime(200)
+      })
+    }
+    // startListening: 1 (auto-start) + 3 (one restart per wrong answer) = 4
+    expect(mockStart).toHaveBeenCalledTimes(4)
+    expect(mockStop).not.toHaveBeenCalled()
+  })
+
+  it('correct answer after a wrong guess still calls onSuccess', async () => {
+    const onSuccess = vi.fn()
+    render(<WordChallenge wordEntry={WORD_ENTRY} language="he" onSuccess={onSuccess} onSkip={vi.fn()} />)
+    await flushPresent()
+    // Wrong first
+    await act(async () => {
+      capturedCb('dog', ['dog'])
+      vi.advanceTimersByTime(200)
+    })
+    // Then correct
+    await act(async () => {
+      capturedCb('cat', ['cat'])
+      vi.advanceTimersByTime(2500)
+    })
+    expect(onSuccess).toHaveBeenCalledOnce()
+  })
+
+  it('displays the word and its translation on screen', () => {
+    render(<WordChallenge wordEntry={WORD_ENTRY} language="he" onSuccess={vi.fn()} onSkip={vi.fn()} />)
+    expect(document.body.textContent).toContain('cat')
+    expect(document.body.textContent).toContain('חתול')
   })
 })

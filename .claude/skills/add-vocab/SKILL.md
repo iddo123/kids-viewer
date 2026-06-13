@@ -39,6 +39,8 @@ The user wants to add new word(s) to the vocabulary list at `src/data/vocabulary
    }
    ```
 
-6. **Remind the user**: the word will only appear in challenges if it also occurs in the YouTube video's transcript. The vocabulary list is a gate, not a guarantee.
+6. **Generate translation audio**: run `npm run gen-tts` to pre-render the MP3 clips for the new word(s) into `public/audio/translations/<lang>/<slug>.mp3` (used by `speakTranslation` in `src/utils/tts.js`). The script is resumable — it skips files that already exist, so it's safe to run after every vocabulary change.
+
+7. **Remind the user**: the word will only appear in challenges if it also occurs in the YouTube video's transcript. The vocabulary list is a gate, not a guarantee.
 
 If the user provides the word but not all translations, look up the correct translations yourself before writing the entry. Do not guess — use your knowledge of the language, and flag any you are uncertain about.

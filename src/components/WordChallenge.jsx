@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import { checkPronunciation } from '../utils/helpers'
 import { LANGUAGES } from '../data/vocabulary'
-import { sleep, speakAndWait, cancelSpeech, playBeep, LANG_TTS } from '../utils/tts'
+import { sleep, speakAndWait, speakTranslation, cancelSpeech, playBeep, LANG_TTS } from '../utils/tts'
 import './WordChallenge.css'
 
 // ── Word-art (English) ────────────────────────────────────────────────────────
@@ -117,7 +117,7 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
       if (cancelled) return
       await speakAndWait(wordEntry.word, 'en-US')
       if (cancelled) return
-      await speakAndWait(translation, ttsLocale)
+      await speakTranslation(wordEntry.word, language, translation, ttsLocale)
 
       // 1-second gap then repeat
       if (cancelled) return
@@ -125,7 +125,7 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
       if (cancelled) return
       await speakAndWait(wordEntry.word, 'en-US')
       if (cancelled) return
-      await speakAndWait(translation, ttsLocale)
+      await speakTranslation(wordEntry.word, language, translation, ttsLocale)
 
       if (cancelled) return
       playBeep()

@@ -57,6 +57,60 @@ export function speakAndWait(text, lang, rate = 0.85) {
 
 export function cancelSpeech() {
   try { window.speechSynthesis?.cancel() } catch {}
+  if (currentAudio) {
+    try { currentAudio.pause() } catch {}
+    currentAudio = null
+  }
+}
+
+// ── Pre-generated translation audio ───────────────────────────────────────────
+//
+// Many browsers (especially desktop Chrome/Edge) don't ship speech-synthesis
+// voices for languages like Hebrew, Arabic, Russian, or Chinese, so the
+// hasVoice check above silently skips the translation. As a fallback, the
+// build can pre-render short MP3 clips (see scripts/generate-translation-audio.js)
+// into public/audio/translations/<lang>/<slug>.mp3.
+
+/** Turn a vocabulary word into a filename-safe slug, e.g. "ice cream" -> "ice-cream". */
+export function slugify(word) {
+  return word.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+}
+
+export function translationAudioUrl(word, lang) {
+  return `/audio/translations/${lang}/${slugify(word)}.mp3`
+}
+
+let currentAudio = null
+
+/**
+ * Play the pre-generated translation clip for `word` in `lang`, resolving when
+ * it finishes. Falls back to speakAndWait(text, ttsLocale) — the browser's
+ * speech synthesis — if the clip is missing (e.g. a word added before audio
+ * regeneration) or fails to play.
+ */
+export function speakTranslation(word, lang, text, ttsLocale, rate = 0.85) {
+  return new Promise(resolve => {
+    if (typeof Audio === 'undefined') { speakAndWait(text, ttsLocale, rate).then(resolve); return }
+
+    const audio = new Audio(translationAudioUrl(word, lang))
+    currentAudio = audio
+
+    const fallback = () => {
+      if (currentAudio === audio) currentAudio = null
+      speakAndWait(text, ttsLocale, rate).then(resolve)
+    }
+    const done = () => {
+      if (currentAudio === audio) currentAudio = null
+      resolve()
+    }
+
+    audio.onended = done
+    audio.onerror = fallback
+
+    let playResult
+    try { playResult = audio.play() } catch { fallback(); return }
+    if (playResult && typeof playResult.catch === 'function') playResult.catch(fallback)
+  })
 }
 
 export function playBeep() {
