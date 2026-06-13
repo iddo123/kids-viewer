@@ -23,3 +23,21 @@
   to     = "/.netlify/functions/suggest"
   status = 200
   force  = true
+
+[[redirects]]
+  from   = "/api/create-checkout-session"
+  to     = "/.netlify/functions/create-checkout-session"
+  status = 200
+  force  = true
+
+[[redirects]]
+  from   = "/api/create-portal-session"
+  to     = "/.netlify/functions/create-portal-session"
+  status = 200
+  force  = true
+
+[[redirects]]
+  from   = "/api/stripe-webhook"
+  to     = "/.netlify/functions/stripe-webhook"
+  status = 200
+  force  = true

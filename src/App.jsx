@@ -1,14 +1,20 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import SetupScreen          from './components/SetupScreen'
+import AuthScreen           from './components/AuthScreen'
 import VideoPlayer          from './components/VideoPlayer'
 import WordChallenge        from './components/WordChallenge'
 import ScoreDisplay         from './components/ScoreDisplay'
 import DictionaryView       from './components/DictionaryView'
 import LevelUpCelebration   from './components/LevelUpCelebration'
+import UpgradePrompt        from './components/UpgradePrompt'
 import { extractVideoId }        from './utils/helpers'
 import { useTranscriptWords }    from './hooks/useTranscriptWords'
 import { STOP_WORDS }            from './utils/transcript'
 import { useUserDictionary }     from './hooks/useUserDictionary'
+import { useAuth }               from './hooks/useAuth'
+import { useSubscription }       from './hooks/useSubscription'
+import { useVideoCount }         from './hooks/useVideoCount'
+import { shouldShowUpgrade }     from './config/limits'
 import { vocabulary }            from './data/vocabulary'
 import { cancelSpeech } from './utils/tts'
 import './App.css'
@@ -110,6 +116,7 @@ export function buildChallengeSchedule(transcriptWords, getLevelFn, startAfterSe
 
 
 export default function App() {
+  const { user, loading: authLoading } = useAuth()
   const [screen, setScreen]           = useState('setup')
   const [videoId, setVideoId]         = useState(null)
   const [language, setLanguage]       = useState('he')
@@ -121,6 +128,7 @@ export default function App() {
   const [videoError, setVideoError]   = useState(null)
   const [showDict, setShowDict]           = useState(false)
   const [showSchedule, setShowSchedule]   = useState(false)
+  const [showUpgrade, setShowUpgrade]     = useState(false)
   const [videoEnded, setVideoEnded]       = useState(false)
   const [levelUpInfo, setLevelUpInfo]     = useState(null)  // { word, level }
   const [scheduleCount, setScheduleCount]         = useState(0)
@@ -142,6 +150,21 @@ export default function App() {
   // ── User dictionary ───────────────────────────────────────────────────────
   const { dictionary, recordAttempt, stats } = useUserDictionary()
   useEffect(() => { dictionaryRef.current = dictionary }, [dictionary])
+
+  // ── Subscription / gating ────────────────────────────────────────────────
+  const subscription = useSubscription()
+  const videoCount    = useVideoCount()
+
+  // After returning from Stripe Checkout, refresh subscription status
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('checkout') === 'success') {
+      subscription.refresh()
+      const url = new URL(window.location.href)
+      url.searchParams.delete('checkout')
+      window.history.replaceState({}, '', url)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── Transcript ────────────────────────────────────────────────────────────
   const { transcriptWords, status: transcriptStatus } = useTranscriptWords(videoId)
@@ -292,6 +315,11 @@ export default function App() {
   const handleStart = useCallback((url, lang, interval = 60) => {
     const id = extractVideoId(url)
     if (!id) return
+    if (shouldShowUpgrade(subscription.isActive, videoCount.count)) {
+      setShowUpgrade(true)
+      return
+    }
+    videoCount.increment()
     scheduleRef.current          = []
     inChallengeRef.current       = false
     activeWordRef.current        = null
@@ -308,7 +336,7 @@ export default function App() {
     setPaused(false)
     setVideoError(null)
     setScreen('playing')
-  }, [])
+  }, [subscription.isActive, videoCount])
 
   const handleBack = useCallback(() => {
     ttsAbortRef.current    = true
@@ -338,8 +366,16 @@ export default function App() {
   })()
 
   // ── Render ────────────────────────────────────────────────────────────────
+  if (authLoading) return null
+  if (!user) return <AuthScreen />
+
   if (screen === 'setup') {
-    return <SetupScreen onStart={handleStart} stats={stats} />
+    return (
+      <>
+        <SetupScreen onStart={handleStart} stats={stats} />
+        {showUpgrade && <UpgradePrompt onClose={() => setShowUpgrade(false)} />}
+      </>
+    )
   }
 
   return (

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { LANGUAGES } from '../data/vocabulary'
 import { extractVideoId } from '../utils/helpers'
 import { version } from '../../package.json'
+import AccountMenu from './AccountMenu'
 import './SetupScreen.css'
 
 const SEARCH_SUGGESTIONS = [
@@ -170,6 +171,7 @@ export default function SetupScreen({ onStart, stats }) {
 
   return (
     <div className="setup-screen">
+      <AccountMenu />
       <div className="setup-hero">
         <div className="setup-hero-icons">🌟 📚 🎉</div>
         <h1 className="setup-title">English Adventure</h1>
