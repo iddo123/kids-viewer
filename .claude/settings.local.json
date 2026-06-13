@@ -178,7 +178,21 @@
       "PowerShell(Test-Path *)",
       "PowerShell(Get-NetTCPConnection *)",
       "Bash(powershell -NoProfile -Command \"until \\(Get-NetTCPConnection -LocalPort 5173 -ErrorAction SilentlyContinue\\) { Start-Sleep -Milliseconds 500 }; echo ready\")",
-      "PowerShell(Stop-Process *)"
+      "PowerShell(Stop-Process *)",
+      "Bash(node -e \"console.log\\('test'\\)\")",
+      "PowerShell(npx vitest run src/utils/helpers.test.js src/utils/transcript.test.js 2>&1 | Select-Object -Last 60)",
+      "PowerShell(npx vitest run src/data/vocabulary.test.js 2>&1 | Select-Object -Last 40)",
+      "PowerShell(npx vitest run src/components/ScoreDisplay.test.jsx 2>&1 | Select-Object -Last 60)",
+      "PowerShell(npx vitest run src/components/LevelUpCelebration.test.jsx 2>&1 | Select-Object -Last 60)",
+      "Bash(npx vitest *)",
+      "PowerShell(npx vitest run src/components/DictionaryView.test.jsx 2>&1 | Select-Object -Last 60)",
+      "PowerShell(npx vitest run src/utils/syllables.test.js)",
+      "PowerShell(npx vitest run src/hooks/useTranscriptWords.test.js 2>&1 | Select-Object -Last 60)",
+      "PowerShell(npx vitest run src/components/WordChallenge.test.jsx)",
+      "PowerShell(npx vitest run src/components/SetupScreen.test.jsx 2>&1 | Select-Object -Last 100)",
+      "PowerShell(npx vitest run)",
+      "PowerShell(Get-Content src/components/DictionaryView.test.jsx -TotalCount 3; \"---\"; Get-Content src/components/ScoreDisplay.test.jsx -TotalCount 3; \"---\"; Get-Content src/hooks/useTranscriptWords.test.js -TotalCount 3)",
+      "PowerShell(npx vitest run src/App.test.jsx 2>&1 | Select-Object -Last 150)"
     ]
   }
 }

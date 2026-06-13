@@ -3,6 +3,7 @@ import {
   parseJson3Transcript,
   pickWordFromTranscript,
   fetchTranscript,
+  fetchDynamicWordEntry,
   STOP_WORDS,
 } from './transcript'
 
@@ -210,5 +211,77 @@ describe('fetchTranscript', () => {
       .mockResolvedValueOnce({ ok: false, status: 404, text: async () => 'Not found' }),
     )
     expect(await fetchTranscript('vid123')).toBeNull()
+  })
+})
+
+// ── fetchDynamicWordEntry ────────────────────────────────────────────────────
+
+describe('fetchDynamicWordEntry', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('returns a translated entry when the API succeeds', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ responseData: { translatedText: 'gato' } }),
+    }))
+    const entry = await fetchDynamicWordEntry('catdyn1', 'es')
+    expect(entry).toEqual({
+      word: 'catdyn1',
+      emoji: '📖',
+      imageQuery: 'catdyn1',
+      translations: { es: 'gato' },
+      isDynamic: true,
+    })
+  })
+
+  it('falls back to the English word when the translation matches the input', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ responseData: { translatedText: 'dogdyn2' } }),
+    }))
+    const entry = await fetchDynamicWordEntry('dogdyn2', 'es')
+    expect(entry.translations.es).toBe('dogdyn2')
+  })
+
+  it('falls back to the English word when the response contains a "NO QUERY" marker', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ responseData: { translatedText: 'NO QUERY SPECIFIED' } }),
+    }))
+    const entry = await fetchDynamicWordEntry('birddyn3', 'fr')
+    expect(entry.translations.fr).toBe('birddyn3')
+  })
+
+  it('falls back to the English word when the response contains a "#" marker', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ responseData: { translatedText: '#error#' } }),
+    }))
+    const entry = await fetchDynamicWordEntry('fishdyn4', 'de')
+    expect(entry.translations.de).toBe('fishdyn4')
+  })
+
+  it('falls back to the English word when the API response is not ok', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }))
+    const entry = await fetchDynamicWordEntry('owldyn5', 'de')
+    expect(entry.translations.de).toBe('owldyn5')
+  })
+
+  it('falls back to the English word when fetch throws', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network error')))
+    const entry = await fetchDynamicWordEntry('foxdyn6', 'ru')
+    expect(entry.translations.ru).toBe('foxdyn6')
+  })
+
+  it('caches results so a repeat call does not re-fetch', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ responseData: { translatedText: 'oiseau' } }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const first = await fetchDynamicWordEntry('birddyn7', 'fr')
+    const second = await fetchDynamicWordEntry('birddyn7', 'fr')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(second).toEqual(first)
   })
 })

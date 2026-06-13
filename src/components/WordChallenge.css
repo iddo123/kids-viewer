@@ -184,6 +184,21 @@
   letter-spacing: -0.01em;
 }
 
+/* Syllable breakdown ("sound it out") */
+.challenge-syllable {
+  color: #cbd5e1;
+  transition: color 0.15s, transform 0.15s;
+}
+.challenge-syllable--active {
+  color: #4ECDC4;
+  transform: scale(1.18);
+}
+.challenge-syllable:not(:last-child)::after {
+  content: '\00b7';
+  margin-left: 6px;
+  color: #cbd5e1;
+}
+
 /* Image */
 .challenge-image-wrap {
   width: 100%;

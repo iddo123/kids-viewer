@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
+import { existsSync } from 'fs'
+import { resolve } from 'path'
 import { vocabulary, LANGUAGES } from './vocabulary'
+import { slugify } from '../utils/tts'
 
 const LANG_CODES = LANGUAGES.map(l => l.code)
 
@@ -81,5 +84,18 @@ describe('vocabulary data integrity', () => {
     // Actions
     expect(words.has('run')).toBe(true)
     expect(words.has('jump')).toBe(true)
+  })
+})
+
+describe('translation audio assets', () => {
+  it('every vocabulary word has a pre-generated MP3 for all 8 languages', () => {
+    const missing = []
+    for (const entry of vocabulary) {
+      for (const code of LANG_CODES) {
+        const file = resolve(process.cwd(), 'public', 'audio', 'translations', code, `${slugify(entry.word)}.mp3`)
+        if (!existsSync(file)) missing.push(`${entry.word} (${code})`)
+      }
+    }
+    expect(missing, `missing audio files: ${missing.join(', ')}`).toEqual([])
   })
 })

@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import { checkPronunciation } from '../utils/helpers'
 import { LANGUAGES } from '../data/vocabulary'
 import { sleep, speakAndWait, speakTranslation, cancelSpeech, playBeep, LANG_TTS } from '../utils/tts'
+import { splitSyllables } from '../utils/syllables'
 import './WordChallenge.css'
 
 // ── Word-art (English) ────────────────────────────────────────────────────────
@@ -72,6 +73,7 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
   const [typedText, setTypedText]   = useState('')
   const [useTypeMode, setUseTypeMode] = useState(false)
   const [timeLeft, setTimeLeft]     = useState(CHALLENGE_TIMEOUT)
+  const [activeSyllable, setActiveSyllable] = useState(-1)
   const attemptsRef = useRef(0)
   const [attempts, setAttempts]     = useState(0)
   const cancelRef        = useRef(false)
@@ -96,6 +98,7 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
   const langInfo    = LANGUAGES.find(l => l.code === language) || LANGUAGES[0]
   const translation = wordEntry.translations?.[language] || wordEntry.word
   const ttsLocale   = LANG_TTS[language] || language
+  const syllables   = useMemo(() => splitSyllables(wordEntry.word), [wordEntry.word])
 
   const canUseMic = supported && !useTypeMode && micError !== 'not-allowed'
 
@@ -116,6 +119,23 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
       // First pass
       if (cancelled) return
       await speakAndWait(wordEntry.word, 'en-US')
+
+      // Sound it out, syllable by syllable, for multi-syllable words
+      if (syllables.length > 1) {
+        if (cancelled) return
+        await sleep(200)
+        for (let i = 0; i < syllables.length; i++) {
+          if (cancelled) return
+          setActiveSyllable(i)
+          await speakAndWait(syllables[i], 'en-US', 0.7)
+          if (cancelled) return
+          await sleep(120)
+        }
+        if (cancelled) return
+        setActiveSyllable(-1)
+        await sleep(150)
+      }
+
       if (cancelled) return
       await speakTranslation(wordEntry.word, language, translation, ttsLocale)
 
@@ -140,6 +160,7 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
       cancelled = true
       cancelRef.current = true
       cancelSpeech()
+      setActiveSyllable(-1)
     }
   }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -266,7 +287,18 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
 
         {/* English word */}
         <div className="challenge-word">
-          <span>{wordEntry.word}</span>
+          {activeSyllable >= 0 ? (
+            syllables.map((syl, i) => (
+              <span
+                key={i}
+                className={`challenge-syllable${i === activeSyllable ? ' challenge-syllable--active' : ''}`}
+              >
+                {syl}
+              </span>
+            ))
+          ) : (
+            <span>{wordEntry.word}</span>
+          )}
         </div>
 
         {/* English visual */}

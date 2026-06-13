@@ -5,9 +5,10 @@ import WordChallenge from './WordChallenge'
 // ── Mocks ──────────────────────────────────────────────────────────────────────
 
 // TTS: all async calls resolve immediately so present() completes in one flush
+const { mockSpeakAndWait } = vi.hoisted(() => ({ mockSpeakAndWait: vi.fn(() => Promise.resolve()) }))
 vi.mock('../utils/tts', () => ({
   sleep:            () => Promise.resolve(),
-  speakAndWait:     () => Promise.resolve(),
+  speakAndWait:     mockSpeakAndWait,
   speakTranslation: () => Promise.resolve(),
   cancelSpeech:     vi.fn(),
   playBeep:         vi.fn(),
@@ -50,6 +51,7 @@ describe('WordChallenge', () => {
     vi.useFakeTimers()
     mockStart.mockClear()
     mockStop.mockClear()
+    mockSpeakAndWait.mockClear()
     capturedCb = null
   })
   afterEach(() => vi.useRealTimers())
@@ -183,5 +185,35 @@ describe('WordChallenge', () => {
     render(<WordChallenge wordEntry={WORD_ENTRY} language="he" onSuccess={vi.fn()} onSkip={vi.fn()} />)
     expect(document.body.textContent).toContain('cat')
     expect(document.body.textContent).toContain('חתול')
+  })
+})
+
+// ── Syllable breakdown ──────────────────────────────────────────────────────
+
+describe('WordChallenge syllable breakdown', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    mockStart.mockClear()
+    mockStop.mockClear()
+    mockSpeakAndWait.mockClear()
+    capturedCb = null
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('speaks each syllable separately for a multi-syllable word', async () => {
+    const entry = { word: 'elephant', emoji: '🐘', imageQuery: 'elephant', translations: { he: 'פיל' } }
+    render(<WordChallenge wordEntry={entry} language="he" onSuccess={vi.fn()} onSkip={vi.fn()} />)
+    await flushPresent()
+
+    const spokenWords = mockSpeakAndWait.mock.calls.map(c => c[0])
+    expect(spokenWords).toEqual(['elephant', 'e', 'le', 'phant', 'elephant'])
+  })
+
+  it('does not add a syllable breakdown for a single-syllable word', async () => {
+    render(<WordChallenge wordEntry={WORD_ENTRY} language="he" onSuccess={vi.fn()} onSkip={vi.fn()} />)
+    await flushPresent()
+
+    const spokenWords = mockSpeakAndWait.mock.calls.map(c => c[0])
+    expect(spokenWords).toEqual(['cat', 'cat'])
   })
 })

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractVideoId, checkPronunciation, scoreToLevel } from './helpers.js'
+import { extractVideoId, checkPronunciation, scoreToLevel, getImageUrl } from './helpers.js'
 
 describe('extractVideoId', () => {
   it('parses a standard watch URL', () => {
@@ -78,6 +78,16 @@ describe('checkPronunciation', () => {
 
   it('rejects an empty spoken string', () => {
     expect(checkPronunciation('', 'cat')).toBe(false)
+  })
+})
+
+describe('getImageUrl', () => {
+  it('builds a LoremFlickr URL containing the word', () => {
+    expect(getImageUrl('cat')).toBe('https://loremflickr.com/400/300/cat')
+  })
+
+  it('URL-encodes special characters in the word', () => {
+    expect(getImageUrl('ice cream')).toBe('https://loremflickr.com/400/300/ice%20cream')
   })
 })
 
