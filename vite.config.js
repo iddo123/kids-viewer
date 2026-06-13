@@ -1,6 +1,8 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import basicSsl from '@vitejs/plugin-basic-ssl'
+import { createClient } from '@supabase/supabase-js'
+import Stripe from 'stripe'
 
 // ── Dev middleware: handles /api/transcript locally ───────────────────────────
 // In production this route is served by netlify/functions/transcript.js
@@ -200,6 +202,111 @@ const searchPlugin = {
   },
 }
 
-export default defineConfig({
-  plugins: [react(), basicSsl(), transcriptPlugin, suggestPlugin, searchPlugin],
+// ── Dev middleware: mirrors netlify/functions/create-checkout-session.js ──────
+function checkoutSessionPlugin(env) {
+  return {
+    name: 'checkout-session-dev-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/create-checkout-session', async (req, res) => {
+        if (req.method !== 'POST') { res.writeHead(405); res.end('Method not allowed'); return }
+        try {
+          const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
+          const stripe   = new Stripe(env.STRIPE_SECRET_KEY)
+
+          const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
+          const { data: authData, error: authError } = await supabase.auth.getUser(token)
+          if (authError || !authData.user) { res.writeHead(401); res.end('Unauthorized'); return }
+          const user = authData.user
+
+          const { data: existing } = await supabase
+            .from('subscriptions')
+            .select('stripe_customer_id')
+            .eq('user_id', user.id)
+            .maybeSingle()
+
+          let customerId = existing?.stripe_customer_id
+          if (!customerId) {
+            const customer = await stripe.customers.create({
+              email:    user.email,
+              metadata: { supabase_user_id: user.id },
+            })
+            customerId = customer.id
+            await supabase
+              .from('subscriptions')
+              .upsert({ user_id: user.id, stripe_customer_id: customerId }, { onConflict: 'user_id' })
+          }
+
+          const session = await stripe.checkout.sessions.create({
+            mode:                'subscription',
+            customer:            customerId,
+            client_reference_id: user.id,
+            line_items:          [{ price: env.STRIPE_PRICE_ID, quantity: 1 }],
+            success_url:         `${env.PUBLIC_SITE_URL}/?checkout=success`,
+            cancel_url:          `${env.PUBLIC_SITE_URL}/?checkout=cancel`,
+          })
+
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ url: session.url }))
+        } catch (err) {
+          console.error('[checkout-session-proxy]', err.message)
+          res.writeHead(502, { 'Content-Type': 'text/plain' })
+          res.end(err.message)
+        }
+      })
+    },
+  }
+}
+
+// ── Dev middleware: mirrors netlify/functions/create-portal-session.js ────────
+function portalSessionPlugin(env) {
+  return {
+    name: 'portal-session-dev-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/create-portal-session', async (req, res) => {
+        if (req.method !== 'POST') { res.writeHead(405); res.end('Method not allowed'); return }
+        try {
+          const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
+          const stripe   = new Stripe(env.STRIPE_SECRET_KEY)
+
+          const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
+          const { data: authData, error: authError } = await supabase.auth.getUser(token)
+          if (authError || !authData.user) { res.writeHead(401); res.end('Unauthorized'); return }
+          const user = authData.user
+
+          const { data } = await supabase
+            .from('subscriptions')
+            .select('stripe_customer_id')
+            .eq('user_id', user.id)
+            .maybeSingle()
+
+          if (!data?.stripe_customer_id) {
+            res.writeHead(400); res.end('No billing account found for this user'); return
+          }
+
+          const session = await stripe.billingPortal.sessions.create({
+            customer:   data.stripe_customer_id,
+            return_url: `${env.PUBLIC_SITE_URL}/`,
+          })
+
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ url: session.url }))
+        } catch (err) {
+          console.error('[portal-session-proxy]', err.message)
+          res.writeHead(502, { 'Content-Type': 'text/plain' })
+          res.end(err.message)
+        }
+      })
+    },
+  }
+}
+
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+
+  return {
+    plugins: [
+      react(), basicSsl(), transcriptPlugin, suggestPlugin, searchPlugin,
+      checkoutSessionPlugin(env), portalSessionPlugin(env),
+    ],
+  }
 })

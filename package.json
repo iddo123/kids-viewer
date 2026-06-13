@@ -9,13 +9,16 @@
     "test": "vitest",
     "test:run": "vitest run",
     "lint": "eslint src",
-    "gen-tts": "node scripts/generate-translation-audio.js"
+    "gen-tts": "node scripts/generate-translation-audio.js",
+    "create-test-user": "node scripts/create-test-user.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
     "@tensorflow-models/coco-ssd": "^2.2.3",
     "@tensorflow/tfjs": "^4.20.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "stripe": "^17.0.0",
     "youtube-transcript": "^1.3.0"
   },
   "devDependencies": {
