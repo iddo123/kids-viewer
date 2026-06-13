@@ -3,6 +3,8 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { version } from '../../package.json'
 import SetupScreen from './SetupScreen'
 
+vi.mock('./AccountMenu', () => ({ default: () => <div data-testid="account-menu" /> }))
+
 describe('SetupScreen', () => {
   afterEach(() => vi.restoreAllMocks())
 

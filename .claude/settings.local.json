@@ -192,7 +192,24 @@
       "PowerShell(npx vitest run src/components/SetupScreen.test.jsx 2>&1 | Select-Object -Last 100)",
       "PowerShell(npx vitest run)",
       "PowerShell(Get-Content src/components/DictionaryView.test.jsx -TotalCount 3; \"---\"; Get-Content src/components/ScoreDisplay.test.jsx -TotalCount 3; \"---\"; Get-Content src/hooks/useTranscriptWords.test.js -TotalCount 3)",
-      "PowerShell(npx vitest run src/App.test.jsx 2>&1 | Select-Object -Last 150)"
+      "PowerShell(npx vitest run src/App.test.jsx 2>&1 | Select-Object -Last 150)",
+      "PowerShell(node _tmp_check.mjs --no-sandbox 2>&1; $env:NODE_TLS_REJECT_UNAUTHORIZED='0'; node _tmp_check.mjs)",
+      "PowerShell(npx vitest run src/App.test.jsx --reporter=verbose 2>&1 | Select-Object -First 80)",
+      "PowerShell(node _tmp_check.mjs)",
+      "PowerShell(npx vitest run 2>&1 | Select-Object -Last 80)",
+      "PowerShell(npx vitest run src/App.test.js 2>&1 | Select-Object -Last 60)",
+      "PowerShell(npx vitest run src/components/SetupScreen.test.jsx 2>&1 | Out-String)",
+      "PowerShell(npx vitest run src/App.test.jsx 2>&1 | Out-String)",
+      "PowerShell(npx vitest run 2>&1 | Out-String -Width 200)",
+      "Bash(node *)",
+      "PowerShell(node _tmp_check.mjs 2>&1 | Out-String)",
+      "PowerShell(node scripts/create-test-user.js 2>&1 | Out-String)",
+      "PowerShell(node _tmp_check2.mjs 2>&1 | Out-String)",
+      "PowerShell(npx vitest run src/components/AuthScreen.test.jsx 2>&1 | Out-String -Width 200)",
+      "PowerShell(npx vitest run src/components/UpgradePrompt.test.jsx 2>&1 | Out-String -Width 200)",
+      "PowerShell(npx vitest run src/components/AccountMenu.test.jsx 2>&1 | Out-String -Width 200)",
+      "PowerShell(npx vitest run src/utils/billing.test.js 2>&1 | Out-String -Width 200)",
+      "PowerShell(npx vitest run 2>&1 | Select-Object -Last 40 | Out-String -Width 200)"
     ]
   }
 }
