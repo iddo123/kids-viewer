@@ -1,5 +1,6 @@
 // Netlify function — fetches YouTube captions by scraping the watch page
 // Accessible at /api/transcript?v=VIDEO_ID  (netlify.toml rewrites here)
+const { reportError } = require('./_sentry')
 
 exports.handler = async (event) => {
   const params  = event.queryStringParameters || {}
@@ -22,6 +23,7 @@ exports.handler = async (event) => {
     }
   } catch (err) {
     console.error(`[transcript] failed for ${videoId}:`, err.message)
+    await reportError(err)
     return {
       statusCode: 502,
       headers: { 'Access-Control-Allow-Origin': '*' },

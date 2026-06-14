@@ -209,7 +209,15 @@
       "PowerShell(npx vitest run src/components/UpgradePrompt.test.jsx 2>&1 | Out-String -Width 200)",
       "PowerShell(npx vitest run src/components/AccountMenu.test.jsx 2>&1 | Out-String -Width 200)",
       "PowerShell(npx vitest run src/utils/billing.test.js 2>&1 | Out-String -Width 200)",
-      "PowerShell(npx vitest run 2>&1 | Select-Object -Last 40 | Out-String -Width 200)"
+      "PowerShell(npx vitest run 2>&1 | Select-Object -Last 40 | Out-String -Width 200)",
+      "Bash(npm test *)",
+      "PowerShell(npm test *)",
+      "PowerShell(npx vitest run netlify/functions/_sentry.test.js 2>&1 | Select-Object -Last 60)",
+      "PowerShell(node -e \"const S = require\\('@sentry/node'\\); console.log\\(typeof S.init, typeof S.captureException, typeof S.flush\\); console.log\\(Object.getOwnPropertyDescriptor\\(S, 'init'\\)\\)\")",
+      "PowerShell(npx vitest run netlify/functions/_sentry.test.js 2>&1 | Select-Object -Last 40)",
+      "PowerShell(npx vitest run netlify/functions/_sentry.test.js 2>&1 | Select-Object -Last 30)",
+      "PowerShell(npx esbuild netlify/functions/stripe-webhook.js --bundle --platform=node --format=cjs --outfile=/tmp/stripe-webhook-bundle.js --external:stripe --external:@supabase/supabase-js --external:@sentry/node 2>&1 | Select-Object -Last 30)",
+      "PowerShell(Get-ChildItem -Force | Where-Object { $_.Name -eq 'tmp' }; git status)"
     ]
   }
 }

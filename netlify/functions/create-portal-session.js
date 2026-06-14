@@ -2,6 +2,7 @@
 // their subscription. Accessible at /api/create-portal-session (netlify.toml).
 const Stripe = require('stripe')
 const { supabaseAdmin, getUserFromAuthHeader } = require('./_supabaseAdmin')
+const { reportError } = require('./_sentry')
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
@@ -34,6 +35,7 @@ exports.handler = async (event) => {
       body:       JSON.stringify({ url: session.url }),
     }
   } catch (err) {
+    await reportError(err)
     return { statusCode: 500, body: err.message }
   }
 }

@@ -1,4 +1,6 @@
 // Proxies YouTube search suggestions — avoids CORS restrictions in the browser
+const { reportError } = require('./_sentry')
+
 exports.handler = async (event) => {
   const query = ((event.queryStringParameters || {}).q || '').trim()
   if (!query) return { statusCode: 400, body: 'Missing q parameter' }
@@ -19,6 +21,7 @@ exports.handler = async (event) => {
       body: JSON.stringify(data[1] || []),
     }
   } catch (err) {
+    await reportError(err)
     return { statusCode: 502, body: err.message }
   }
 }

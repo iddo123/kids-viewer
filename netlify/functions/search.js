@@ -1,5 +1,6 @@
 // Netlify function — searches YouTube filtered to videos with captions (CC)
 // Accessible at /api/search?q=QUERY  (netlify.toml rewrites here)
+const { reportError } = require('./_sentry')
 
 exports.handler = async (event) => {
   const params = event.queryStringParameters || {}
@@ -21,6 +22,7 @@ exports.handler = async (event) => {
       body: JSON.stringify(results),
     }
   } catch (err) {
+    await reportError(err)
     return { statusCode: 502, body: err.message }
   }
 }

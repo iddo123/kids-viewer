@@ -3,6 +3,7 @@
 // Accessible at /api/stripe-webhook (netlify.toml).
 const Stripe = require('stripe')
 const { supabaseAdmin } = require('./_supabaseAdmin')
+const { reportError } = require('./_sentry')
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
@@ -55,8 +56,10 @@ exports.handler = async (event) => {
         break
     }
   } catch (err) {
-    // Log only — Stripe retries on non-2xx, which won't help with our own bugs.
+    // Report to Sentry — Stripe retries on non-2xx, which won't help with our
+    // own bugs, but we still need to know a paid subscription failed to sync.
     console.error('[stripe-webhook]', err)
+    await reportError(err)
   }
 
   return { statusCode: 200, body: 'ok' }
