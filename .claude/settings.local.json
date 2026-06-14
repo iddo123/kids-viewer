@@ -217,7 +217,22 @@
       "PowerShell(npx vitest run netlify/functions/_sentry.test.js 2>&1 | Select-Object -Last 40)",
       "PowerShell(npx vitest run netlify/functions/_sentry.test.js 2>&1 | Select-Object -Last 30)",
       "PowerShell(npx esbuild netlify/functions/stripe-webhook.js --bundle --platform=node --format=cjs --outfile=/tmp/stripe-webhook-bundle.js --external:stripe --external:@supabase/supabase-js --external:@sentry/node 2>&1 | Select-Object -Last 30)",
-      "PowerShell(Get-ChildItem -Force | Where-Object { $_.Name -eq 'tmp' }; git status)"
+      "PowerShell(Get-ChildItem -Force | Where-Object { $_.Name -eq 'tmp' }; git status)",
+      "Bash(ls src/components/)",
+      "Bash(ls src/)",
+      "PowerShell(npx netlify status 2>&1 | Select-Object -Last 30)",
+      "PowerShell(npx vitest run src/components/ScoreDisplay.test.jsx src/components/SetupScreen.test.jsx 2>&1 | Select-Object -Last 60)",
+      "PowerShell(npx vitest run 2>&1 | Select-Object -Last 30)",
+      "PowerShell(npx vitest run src/components/HelpModal.test.jsx src/components/ScoreDisplay.test.jsx src/components/SetupScreen.test.jsx 2>&1 | Select-Object -Last 30)",
+      "Bash(cat .env)",
+      "Bash(cat .env.local)",
+      "PowerShell(npx netlify open:admin 2>&1 | Out-String -Width 200)",
+      "PowerShell(npx netlify status 2>&1 | Select-Object -First 30)",
+      "WebFetch(domain:jovial-gelato-480826.netlify.app)",
+      "PowerShell(npx netlify deploy --build --prod 2>&1 | Out-String -Width 200)",
+      "PowerShell(npx vitest run netlify/functions/__tests__/_sentry.test.js 2>&1 | Select-Object -Last 20)",
+      "PowerShell(npx netlify deploy --prod 2>&1 | Out-String -Width 200)",
+      "PowerShell(npx netlify deploy --prod --skip-functions-cache 2>&1 | Out-String -Width 200)"
     ]
   }
 }

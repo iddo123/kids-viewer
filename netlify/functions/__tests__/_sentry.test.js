@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import * as Sentry from '@sentry/node'
-import { reportError } from './_sentry'
+import { reportError } from '../_sentry'
 
 vi.mock('@sentry/node', () => ({
   init:             vi.fn(),
