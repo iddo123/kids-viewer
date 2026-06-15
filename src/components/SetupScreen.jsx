@@ -78,7 +78,7 @@ function SearchResult({ video, selected, onSelect }) {
   )
 }
 
-export default function SetupScreen({ onStart, stats, onHelpOpen }) {
+export default function SetupScreen({ onStart, stats, onHelpOpen, onPrivacyOpen }) {
   const [url, setUrl]           = useState('')
   const [lang, setLang]         = useState('he')
   const [interval, setInterval] = useState(60)
@@ -321,7 +321,10 @@ export default function SetupScreen({ onStart, stats, onHelpOpen }) {
           🚀 Start Learning!
         </button>
 
-        <p className="app-version">v{version}</p>
+        <div className="setup-footer">
+          <p className="app-version">v{version}</p>
+          <button className="privacy-link" onClick={onPrivacyOpen}>🔒 Privacy</button>
+        </div>
       </div>
     </div>
   )

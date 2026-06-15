@@ -250,12 +250,31 @@
 .start-btn:active { transform: scale(0.97); }
 
 .app-version {
-  margin: 8px 0 0;
+  margin: 0;
   font-size: 0.72rem;
   color: #94a3b8;
-  text-align: center;
   letter-spacing: 0.05em;
 }
+
+.setup-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 8px 0 0;
+}
+
+.privacy-link {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  background: none;
+  border: none;
+  padding: 0;
+  text-decoration: underline;
+  cursor: pointer;
+  font-family: inherit;
+}
+.privacy-link:hover { color: #cbd5e1; }
 
 .setup-dict-stats {
   text-align: center;

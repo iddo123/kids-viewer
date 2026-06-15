@@ -8,6 +8,7 @@ import DictionaryView       from './components/DictionaryView'
 import LevelUpCelebration   from './components/LevelUpCelebration'
 import UpgradePrompt        from './components/UpgradePrompt'
 import HelpModal            from './components/HelpModal'
+import PrivacyModal          from './components/PrivacyModal'
 import { extractVideoId }        from './utils/helpers'
 import { useTranscriptWords }    from './hooks/useTranscriptWords'
 import { STOP_WORDS }            from './utils/transcript'
@@ -131,6 +132,7 @@ export default function App() {
   const [showSchedule, setShowSchedule]   = useState(false)
   const [showUpgrade, setShowUpgrade]     = useState(false)
   const [showHelp, setShowHelp]           = useState(false)
+  const [showPrivacy, setShowPrivacy]     = useState(false)
   const [videoEnded, setVideoEnded]       = useState(false)
   const [levelUpInfo, setLevelUpInfo]     = useState(null)  // { word, level }
   const [scheduleCount, setScheduleCount]         = useState(0)
@@ -374,9 +376,10 @@ export default function App() {
   if (screen === 'setup') {
     return (
       <>
-        <SetupScreen onStart={handleStart} stats={stats} onHelpOpen={() => setShowHelp(true)} />
+        <SetupScreen onStart={handleStart} stats={stats} onHelpOpen={() => setShowHelp(true)} onPrivacyOpen={() => setShowPrivacy(true)} />
         {showUpgrade && <UpgradePrompt onClose={() => setShowUpgrade(false)} />}
         {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+        {showPrivacy && <PrivacyModal onClose={() => setShowPrivacy(false)} />}
       </>
     )
   }
