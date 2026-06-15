@@ -78,7 +78,7 @@ function SearchResult({ video, selected, onSelect }) {
   )
 }
 
-export default function SetupScreen({ onStart, stats }) {
+export default function SetupScreen({ onStart, stats, onHelpOpen }) {
   const [url, setUrl]           = useState('')
   const [lang, setLang]         = useState('he')
   const [interval, setInterval] = useState(60)
@@ -171,7 +171,12 @@ export default function SetupScreen({ onStart, stats }) {
 
   return (
     <div className="setup-screen">
-      <AccountMenu />
+      <div className="setup-topbar">
+        <button className="help-btn" onClick={onHelpOpen} title="How to play" aria-label="Help">
+          ❓ Help
+        </button>
+        <AccountMenu />
+      </div>
       <div className="setup-hero">
         <div className="setup-hero-icons">🌟 📚 🎉</div>
         <h1 className="setup-title">English Adventure</h1>

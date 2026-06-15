@@ -319,3 +319,23 @@
   white-space: nowrap;
 }
 .dict-btn:hover { background: rgba(255,255,255,0.14); color: white; }
+
+/* Help button — inline in the score bar */
+.help-icon-btn {
+  width: 30px;
+  height: 30px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  font-family: inherit;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  border: 1.5px solid rgba(255,255,255,0.14);
+  color: #cbd5e1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.help-icon-btn:hover { background: rgba(255,255,255,0.14); color: white; }

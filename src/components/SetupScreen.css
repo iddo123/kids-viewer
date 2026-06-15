@@ -7,6 +7,38 @@
   background: linear-gradient(160deg, #e0f7fa 0%, #fff9f0 50%, #fce4ec 100%);
 }
 
+.setup-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  max-width: 680px;
+  margin-bottom: 8px;
+}
+.setup-topbar .account-menu {
+  width: auto;
+  max-width: none;
+  min-width: 0;
+  margin: 0;
+  flex: 1;
+}
+
+.help-btn {
+  padding: 8px 14px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  font-size: 0.8rem;
+  font-weight: 800;
+  font-family: inherit;
+  color: var(--color-navy);
+  transition: all 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.help-btn:hover { border-color: var(--color-secondary); background: #f0fdfa; }
+
 .setup-hero {
   text-align: center;
   margin-bottom: 28px;

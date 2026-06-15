@@ -25,7 +25,7 @@ function AnimatedNumber({ value }) {
   return <span>{display}</span>
 }
 
-export default function ScoreDisplay({ score, streak, onBack, dictCount, onDictOpen }) {
+export default function ScoreDisplay({ score, streak, onBack, dictCount, onDictOpen, onHelpOpen }) {
   const { level, title, icon, next } = scoreToLevel(score)
   const progress = next ? (score / next) * 100 : 100
 
@@ -61,6 +61,10 @@ export default function ScoreDisplay({ score, streak, onBack, dictCount, onDictO
 
       <button className="dict-btn" onClick={onDictOpen}>
         📚 {dictCount} word{dictCount !== 1 ? 's' : ''}
+      </button>
+
+      <button className="help-icon-btn" onClick={onHelpOpen} title="How to play" aria-label="Help">
+        ❓
       </button>
     </div>
   )

@@ -14,6 +14,13 @@ describe('SetupScreen', () => {
     expect(screen.getByText(`v${version}`)).toBeInTheDocument()
   })
 
+  it('calls onHelpOpen when the help button is clicked', () => {
+    const onHelpOpen = vi.fn()
+    render(<SetupScreen onStart={() => {}} stats={null} onHelpOpen={onHelpOpen} />)
+    fireEvent.click(screen.getByRole('button', { name: /help/i }))
+    expect(onHelpOpen).toHaveBeenCalledTimes(1)
+  })
+
   it('defaults to Hebrew language and a 1 minute interval', () => {
     render(<SetupScreen onStart={() => {}} stats={null} />)
     expect(screen.getByText('עברית').closest('button').className).toContain('lang-btn--active')

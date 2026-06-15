@@ -65,4 +65,11 @@ describe('ScoreDisplay', () => {
     fireEvent.click(screen.getByRole('button', { name: /words/i }))
     expect(onDictOpen).toHaveBeenCalledTimes(1)
   })
+
+  it('calls onHelpOpen when the help button is clicked', () => {
+    const onHelpOpen = vi.fn()
+    render(<ScoreDisplay score={0} streak={0} onBack={() => {}} dictCount={0} onDictOpen={() => {}} onHelpOpen={onHelpOpen} />)
+    fireEvent.click(screen.getByRole('button', { name: /help/i }))
+    expect(onHelpOpen).toHaveBeenCalledTimes(1)
+  })
 })

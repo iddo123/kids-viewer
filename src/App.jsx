@@ -7,6 +7,7 @@ import ScoreDisplay         from './components/ScoreDisplay'
 import DictionaryView       from './components/DictionaryView'
 import LevelUpCelebration   from './components/LevelUpCelebration'
 import UpgradePrompt        from './components/UpgradePrompt'
+import HelpModal            from './components/HelpModal'
 import { extractVideoId }        from './utils/helpers'
 import { useTranscriptWords }    from './hooks/useTranscriptWords'
 import { STOP_WORDS }            from './utils/transcript'
@@ -129,6 +130,7 @@ export default function App() {
   const [showDict, setShowDict]           = useState(false)
   const [showSchedule, setShowSchedule]   = useState(false)
   const [showUpgrade, setShowUpgrade]     = useState(false)
+  const [showHelp, setShowHelp]           = useState(false)
   const [videoEnded, setVideoEnded]       = useState(false)
   const [levelUpInfo, setLevelUpInfo]     = useState(null)  // { word, level }
   const [scheduleCount, setScheduleCount]         = useState(0)
@@ -372,15 +374,23 @@ export default function App() {
   if (screen === 'setup') {
     return (
       <>
-        <SetupScreen onStart={handleStart} stats={stats} />
+        <SetupScreen onStart={handleStart} stats={stats} onHelpOpen={() => setShowHelp(true)} />
         {showUpgrade && <UpgradePrompt onClose={() => setShowUpgrade(false)} />}
+        {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
       </>
     )
   }
 
   return (
     <div className="app-playing">
-      <ScoreDisplay score={score} streak={streak} onBack={handleBack} dictCount={stats.total} onDictOpen={() => setShowDict(true)} />
+      <ScoreDisplay
+        score={score}
+        streak={streak}
+        onBack={handleBack}
+        dictCount={stats.total}
+        onDictOpen={() => setShowDict(true)}
+        onHelpOpen={() => setShowHelp(true)}
+      />
 
       {statusBadge && (
         <button
@@ -472,6 +482,8 @@ export default function App() {
           onClose={() => setShowDict(false)}
         />
       )}
+
+      {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
 
       {showSchedule && (
         <div className="schedule-overlay" onClick={() => setShowSchedule(false)}>
