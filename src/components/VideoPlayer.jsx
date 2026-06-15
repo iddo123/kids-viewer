@@ -90,6 +90,7 @@ export default function VideoPlayer({ videoId, paused, seekTo, inChallenge, onTi
         videoId,
         width: '100%',
         height: '100%',
+        host: 'https://www.youtube-nocookie.com',
         playerVars: { autoplay: 1, rel: 0, modestbranding: 1, playsinline: 1 },
         events: {
           onReady(e) {

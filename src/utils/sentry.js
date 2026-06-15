@@ -10,5 +10,14 @@ export function initSentry() {
     environment: import.meta.env.MODE,
     // This app is used by kids — never attach IPs, cookies, or other PII.
     sendDefaultPii: false,
+    // Strip any typed/spoken input values from DOM breadcrumbs (e.g. the
+    // word-guess text field) before they're sent to Sentry.
+    beforeBreadcrumb(breadcrumb) {
+      if (breadcrumb.category === 'ui.input' || breadcrumb.category === 'ui.click') {
+        delete breadcrumb.message
+        if (breadcrumb.data) delete breadcrumb.data.value
+      }
+      return breadcrumb
+    },
   })
 }
