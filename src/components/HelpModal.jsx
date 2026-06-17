@@ -62,6 +62,13 @@ export default function HelpModal({ onClose }) {
               </div>
             </div>
           ))}
+
+          <div className="help-support">
+            <p>Need help? Have a suggestion?</p>
+            <a href="mailto:iddo.bd@gmail.com" className="help-support-link">
+              ✉️ Contact support
+            </a>
+          </div>
         </div>
       </div>
     </div>
