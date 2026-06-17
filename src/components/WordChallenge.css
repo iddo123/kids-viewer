@@ -539,3 +539,49 @@
   to   { transform: translateX(-50%) translateY(-6px); }
 }
 
+/* ── Tap-the-picture choices ──────────────────────────────────────────────── */
+.choice-grid {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  width: 100%;
+  margin-top: 10px;
+}
+.choice-card {
+  flex: 1 1 0;
+  max-width: 120px;
+  aspect-ratio: 1;
+  border: 3px solid #e2e8f0;
+  border-radius: 20px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #e2e8f0;
+  transition: transform 0.12s, border-color 0.15s, box-shadow 0.15s;
+}
+.choice-card:hover:not(:disabled) {
+  transform: translateY(-3px);
+  border-color: #4ECDC4;
+  box-shadow: 0 7px 0 #b2f0ea;
+}
+.choice-card:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 0 #e2e8f0;
+}
+.choice-emoji { font-size: 3.2rem; line-height: 1; }
+
+.choice-card--wrong {
+  border-color: #FCA5A5;
+  background: #fef2f2;
+  opacity: 0.5;
+  cursor: not-allowed;
+  animation: choice-shake 0.4s ease;
+}
+@keyframes choice-shake {
+  0%, 100% { transform: translateX(0);   }
+  25%      { transform: translateX(-7px); }
+  75%      { transform: translateX(7px);  }
+}
+

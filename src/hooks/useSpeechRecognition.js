@@ -73,8 +73,10 @@ export function useSpeechRecognition() {
       console.warn('[speech] error:', e.error)
 
       if (e.error === 'no-speech' && !stoppedRef.current) {
-        // Keep retrying indefinitely — the challenge timer calls stopListening()
-        // when time is up, which sets stoppedRef = true and ends the loop.
+        // Null onend so it doesn't also schedule a restart — both onerror and onend
+        // fire for no-speech, and two concurrent _start() calls race each other.
+        // Nulling onend also keeps listening=true so the UI doesn't flicker.
+        rec.onend = null
         setTimeout(() => { if (!stoppedRef.current) _start(SR) }, 100)
         return
       }

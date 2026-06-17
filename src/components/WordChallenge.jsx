@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import { checkPronunciation } from '../utils/helpers'
-import { LANGUAGES } from '../data/vocabulary'
+import { LANGUAGES, getChallengeOptions } from '../data/vocabulary'
 import { sleep, speakAndWait, speakTranslation, cancelSpeech, playBeep, LANG_TTS } from '../utils/tts'
 import { splitSyllables } from '../utils/syllables'
 import './WordChallenge.css'
@@ -63,6 +63,11 @@ function formatTime(sec) {
 const MAX_ATTEMPTS      = 2
 const CHALLENGE_TIMEOUT = 10   // seconds per attempt
 
+// Challenges are answered by tapping a picture. The speech/typing answer flow
+// below is kept fully intact but disabled — flip this back to true to restore
+// microphone answering.
+const SPEECH_ENABLED = false
+
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }) {
   const { listening, error: micError, startListening, stopListening, supported } = useSpeechRecognition()
@@ -74,6 +79,7 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
   const [useTypeMode, setUseTypeMode] = useState(false)
   const [timeLeft, setTimeLeft]     = useState(CHALLENGE_TIMEOUT)
   const [activeSyllable, setActiveSyllable] = useState(-1)
+  const [wrongPicks, setWrongPicks] = useState([])   // option words already ruled out
   const attemptsRef = useRef(0)
   const [attempts, setAttempts]     = useState(0)
   const cancelRef        = useRef(false)
@@ -99,6 +105,9 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
   const translation = wordEntry.translations?.[language] || wordEntry.word
   const ttsLocale   = LANG_TTS[language] || language
   const syllables   = useMemo(() => splitSyllables(wordEntry.word), [wordEntry.word])
+
+  // Tap-the-picture options: the target word plus same-category distractors.
+  const options = useMemo(() => getChallengeOptions(wordEntry.word, 3), [wordEntry.word])
 
   const canUseMic = supported && !useTypeMode && micError !== 'not-allowed'
 
@@ -152,7 +161,8 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
       await sleep(150)
 
       if (cancelled) return
-      setPhase(canUseMic ? 'listening' : 'typing')
+      if (!SPEECH_ENABLED) setPhase('choosing')
+      else setPhase(canUseMic ? 'listening' : 'typing')
     }
 
     present()
@@ -192,8 +202,8 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
 
   // ── Countdown timer ───────────────────────────────────────────────────────
   useEffect(() => {
-    if (phase !== 'listening' && phase !== 'typing') return
-    failHandledRef.current = false   // reset guard for each new listening session
+    if (phase !== 'listening' && phase !== 'typing' && phase !== 'choosing') return
+    failHandledRef.current = false   // reset guard for each new response session
     setTimeLeft(CHALLENGE_TIMEOUT)
     const id = setInterval(() => {
       setTimeLeft(prev => {
@@ -202,7 +212,7 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
           // Guard prevents double-fire from React StrictMode's double-invocation of state updaters
           if (!failHandledRef.current) {
             failHandledRef.current = true
-            handleFail()
+            SPEECH_ENABLED ? handleFail() : handlePickTimeout()
           }
           return 0
         }
@@ -229,6 +239,9 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
   // ── Answer ────────────────────────────────────────────────────────────────
   function handleAnswer(text) {
     const correct = checkPronunciation(text, wordEntry.word)
+    console.log(
+      `[challenge] target="${wordEntry.word}" heard=${JSON.stringify(text)} → ${correct ? 'MATCH ✓' : 'NO MATCH ✗'}`
+    )
     if (correct) {
       setPhase('success')
       const pts = attemptsRef.current === 0 ? 100 : 50
@@ -243,6 +256,34 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
         }
       }, 100)
     }
+  }
+
+  // ── Tap-the-picture answer ──────────────────────────────────────────────────
+  function handlePick(optionWord) {
+    if (phaseRef.current !== 'choosing') return
+    if (optionWord === wordEntry.word) {
+      setPhase('success')
+      const pts = attemptsRef.current === 0 ? 100 : attemptsRef.current === 1 ? 50 : 25
+      schedule(() => onSuccess(pts), 1100)
+    } else {
+      // Wrong picture: rule it out, count the attempt, reveal the answer once
+      // both distractors are exhausted.
+      setWrongPicks(prev => prev.includes(optionWord) ? prev : [...prev, optionWord])
+      attemptsRef.current += 1
+      setAttempts(attemptsRef.current)
+      if (attemptsRef.current >= MAX_ATTEMPTS) {
+        setPhase('answer')
+        schedule(() => onSkip(), 3500)
+      }
+    }
+  }
+
+  // Timer ran out before any pick — reveal the answer, then move on.
+  function handlePickTimeout() {
+    attemptsRef.current = MAX_ATTEMPTS
+    setAttempts(MAX_ATTEMPTS)
+    setPhase('answer')
+    schedule(() => onSkip(), 3500)
   }
 
   const handleTypeSubmit = (e) => {
@@ -301,13 +342,15 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
           )}
         </div>
 
-        {/* English visual */}
-        <div className="challenge-image-wrap">
-          {!wordEntry.isDynamic
-            ? <div className="challenge-emoji-large">{wordEntry.emoji}</div>
-            : <WordArt word={wordEntry.word} />
-          }
-        </div>
+        {/* English visual — hidden while choosing so the answer isn't given away */}
+        {phase !== 'choosing' && (
+          <div className="challenge-image-wrap">
+            {!wordEntry.isDynamic
+              ? <div className="challenge-emoji-large">{wordEntry.emoji}</div>
+              : <WordArt word={wordEntry.word} />
+            }
+          </div>
+        )}
 
         {/* Translation art + flag */}
         <div className="challenge-translation-wrap">
@@ -343,11 +386,11 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
         )}
 
         {/* Activity section */}
-        {(phase === 'presenting' || phase === 'listening' || phase === 'typing') && (
+        {(phase === 'presenting' || phase === 'listening' || phase === 'typing' || phase === 'choosing') && (
           <div className="activity-section">
 
             {/* Countdown ring (only during active response phases) */}
-            {(phase === 'listening' || phase === 'typing') && (
+            {(phase === 'listening' || phase === 'typing' || phase === 'choosing') && (
               <div className="countdown-wrap">
                 <svg className="countdown-ring" viewBox="0 0 36 36">
                   <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e2e8f0" strokeWidth="3" />
@@ -364,7 +407,30 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
               </div>
             )}
 
-            {phase === 'typing' ? (
+            {phase === 'choosing' ? (
+              <>
+                <p className="mic-prompt mic-prompt--go">Which one is it? 👆</p>
+                <div className="choice-grid">
+                  {options.map(opt => {
+                    const ruledOut = wrongPicks.includes(opt.word)
+                    return (
+                      <button
+                        key={opt.word}
+                        className={`choice-card${ruledOut ? ' choice-card--wrong' : ''}`}
+                        onClick={() => handlePick(opt.word)}
+                        disabled={ruledOut}
+                        aria-label={opt.word}
+                      >
+                        <span className="choice-emoji">{opt.emoji}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                {wrongPicks.length > 0 && (
+                  <div className="heard-text heard-text--retry">😅 Not quite — try again!</div>
+                )}
+              </>
+            ) : phase === 'typing' ? (
               <>
                 <p className="mic-prompt">Type the word! ⌨️</p>
                 <form className="type-form" onSubmit={handleTypeSubmit}>

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { existsSync } from 'fs'
 import { resolve } from 'path'
-import { vocabulary, LANGUAGES } from './vocabulary'
+import { vocabulary, LANGUAGES, CATEGORIES, getChallengeOptions } from './vocabulary'
 import { slugify } from '../utils/tts'
 
 const LANG_CODES = LANGUAGES.map(l => l.code)
@@ -84,6 +84,51 @@ describe('vocabulary data integrity', () => {
     // Actions
     expect(words.has('run')).toBe(true)
     expect(words.has('jump')).toBe(true)
+  })
+})
+
+describe('getChallengeOptions', () => {
+  const words = new Set(vocabulary.map(e => e.word))
+
+  it('returns the target plus two distractors (3 options)', () => {
+    const opts = getChallengeOptions('truck')
+    expect(opts).toHaveLength(3)
+    expect(opts.some(o => o.word === 'truck')).toBe(true)
+  })
+
+  it('every option has a distinct emoji so choices are distinguishable', () => {
+    for (const word of ['truck', 'cat', 'apple', 'red', 'happy']) {
+      const emojis = getChallengeOptions(word).map(o => o.emoji)
+      expect(new Set(emojis).size, `${word} produced a duplicate emoji`).toBe(emojis.length)
+    }
+  })
+
+  it('prefers distractors from the same category', () => {
+    const transport = new Set(CATEGORIES.transport)
+    // Run several times since selection is randomised
+    for (let i = 0; i < 25; i++) {
+      const opts = getChallengeOptions('truck')
+      for (const o of opts) expect(transport.has(o.word)).toBe(true)
+    }
+  })
+
+  it('falls back to random words when a category is too small for 3 options', () => {
+    // "weather" only has 2 words, so the 3rd option must come from elsewhere
+    const opts = getChallengeOptions('hot')
+    expect(opts).toHaveLength(3)
+    expect(opts.every(o => words.has(o.word))).toBe(true)
+  })
+
+  it('returns an empty array for an unknown word', () => {
+    expect(getChallengeOptions('notarealword')).toEqual([])
+  })
+
+  it('every category word exists in the vocabulary', () => {
+    for (const [cat, list] of Object.entries(CATEGORIES)) {
+      for (const w of list) {
+        expect(words.has(w), `${cat} lists "${w}" which is not in the vocabulary`).toBe(true)
+      }
+    }
   })
 })
 

@@ -226,6 +226,82 @@ export const vocabulary = [
   { word: 'scared',    emoji: '😨', imageQuery: 'child,scared,surprised',    translations: { he: 'מפוחד',    es: 'asustado',   fr: 'effrayé',     de: 'ängstlich',  ar: 'خائف',     ru: 'испуганный', zh: '害怕',   pt: 'assustado'  } },
 ]
 
+// ── Challenge categories ────────────────────────────────────────────────────
+// Words grouped by theme, used to pick plausible wrong answers (distractors)
+// for the tap-the-picture challenge. The "More X" sections are merged into
+// their base category. A word missing from this map simply falls back to
+// random distractors, so the game still works if a new word isn't added here.
+export const CATEGORIES = {
+  animals:     ['cat','dog','fish','bird','duck','frog','horse','cow','pig','sheep','bear','lion','monkey','elephant','rabbit','butterfly','turtle','snake','tiger','giraffe','penguin','bee','owl','whale','zebra','wolf','fox','chicken','camel','crocodile','deer','dolphin','parrot','shark','spider'],
+  food:        ['apple','banana','orange','strawberry','bread','milk','egg','cake','pizza','cheese','carrot','soup','juice','water','grapes','watermelon','lemon','corn','ice cream','cookie','chocolate','cherry','mango','mushroom','pineapple','potato','rice','tomato'],
+  colors:      ['red','blue','green','yellow','pink','purple','white','black','brown','gray'],
+  body:        ['eye','nose','mouth','ear','hand','head','hair','leg','foot','arm','finger','tooth'],
+  actions:     ['run','jump','swim','sing','dance','sleep','draw','eat','drink','read','play','walk','fly','build','catch','climb','close','cook','laugh','open','throw'],
+  nature:      ['sun','moon','star','cloud','rain','snow','fire','flower','tree','sea','rainbow','mountain','river','wind','grass'],
+  home:        ['house','door','table','chair','book','clock','pencil','ball','bed','window','phone','cup','toy','key'],
+  transport:   ['car','boat','train','plane','bus','bicycle','truck','rocket'],
+  clothing:    ['hat','shoe','dress','shirt','pants','sock','coat'],
+  family:      ['baby','family','boy','girl','friend'],
+  instruments: ['drum','guitar','piano'],
+  places:      ['beach','farm','park','school','zoo'],
+  shapes:      ['circle','heart','square','triangle'],
+  weather:     ['cold','hot'],
+  feelings:    ['happy','sad','angry','scared'],
+}
+
+const WORD_TO_CATEGORY = (() => {
+  const map = {}
+  for (const [cat, words] of Object.entries(CATEGORIES)) {
+    for (const w of words) map[w] = cat
+  }
+  return map
+})()
+
+function shuffle(arr) {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+/**
+ * Build the option set for a tap-the-picture challenge: the target word plus
+ * (count - 1) distractors. Distractors come from the same category when
+ * possible, falling back to random words for tiny categories. Every option has
+ * a visually distinct emoji so the choices are always distinguishable. The
+ * result is shuffled so the correct answer isn't always in the same position.
+ */
+export function getChallengeOptions(targetWord, count = 3) {
+  const target = vocabulary.find(v => v.word === targetWord)
+  if (!target) return []
+
+  const chosen = [target]
+  const usedEmojis = new Set([target.emoji])
+
+  const addFrom = (words) => {
+    for (const w of words) {
+      if (chosen.length >= count) break
+      const entry = vocabulary.find(v => v.word === w)
+      if (!entry || entry.word === targetWord) continue
+      if (chosen.some(c => c.word === entry.word)) continue
+      if (usedEmojis.has(entry.emoji)) continue   // keep all emojis distinct
+      chosen.push(entry)
+      usedEmojis.add(entry.emoji)
+    }
+  }
+
+  // Prefer same-category distractors…
+  const cat = WORD_TO_CATEGORY[targetWord]
+  if (cat) addFrom(shuffle(CATEGORIES[cat]))
+
+  // …then top up with random words if the category was too small.
+  if (chosen.length < count) addFrom(shuffle(vocabulary.map(v => v.word)))
+
+  return shuffle(chosen)
+}
+
 export const LANGUAGES = [
   { code: 'he', label: 'עברית',     flag: '🇮🇱', speechCode: 'he-IL' },
   { code: 'es', label: 'Español',   flag: '🇪🇸', speechCode: 'en-US' },
