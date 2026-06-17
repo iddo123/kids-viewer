@@ -53,8 +53,8 @@ function _matchesTarget(spoken, target) {
   if (spokenClean.includes(targetClean)) return true
 
   // Check each individual spoken word (handles "a cat" → "cat", "I said dog" → "dog")
-  // 40% edit-distance threshold — lenient enough for accents and kids' pronunciation
-  const threshold = Math.max(1, Math.ceil(targetClean.length * 0.4))
+  // 60% edit-distance threshold — lenient enough for accents and kids' pronunciation
+  const threshold = Math.max(1, Math.ceil(targetClean.length * 0.6))
   for (const w of spokenClean.split(/\s+/)) {
     if (w === targetClean) return true
     if (levenshtein(w, targetClean) <= threshold) return true

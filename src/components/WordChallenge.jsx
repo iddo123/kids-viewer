@@ -232,7 +232,7 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
     if (correct) {
       setPhase('success')
       const pts = attemptsRef.current === 0 ? 100 : 50
-      schedule(() => onSuccess(pts), 2200)
+      schedule(() => onSuccess(pts), 1100)
     } else {
       // Wrong guess within the 10s window — reopen the mic after a minimal
       // engine-reset gap. Use startListening directly (not triggerMic) so
