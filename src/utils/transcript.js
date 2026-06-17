@@ -117,9 +117,13 @@ export function parseJson3Transcript(rawText) {
     for (const ev of events) {
       if (!ev.segs || !ev.tStartMs) continue
       const phrase = ev.segs.map(s => s.utf8 ?? '').join('').trim()
+      // dDurationMs lets us know when a caption line *ends* (for silence detection)
+      const durMs = typeof ev.dDurationMs === 'number' ? ev.dDurationMs : undefined
       for (const raw of phrase.split(/\s+/)) {
         const word = raw.toLowerCase().replace(/[^a-z]/g, '')
-        if (word.length >= 3) result.push({ word, startMs: ev.tStartMs })
+        if (word.length >= 3) {
+          result.push(durMs != null ? { word, startMs: ev.tStartMs, durMs } : { word, startMs: ev.tStartMs })
+        }
       }
     }
     console.log(`[transcript] parsed ${result.length} tokens (json3)`)
@@ -131,30 +135,32 @@ export function parseJson3Transcript(rawText) {
   //   <timedtext><body><p t="9560">Hello</p></body></timedtext>
   if (rawText.includes('<transcript>') || rawText.includes('<timedtext')) {
     const result = []
-    // Variant 1: <text start="seconds"> (fmt=srv3 / old API)
-    const reText = /start="([\d.]+)"[^>]*>([^<]+)<\/text>/g
+    // Variant 1: <text start="seconds" dur="seconds"> (fmt=srv3 / old API)
+    const reText = /start="([\d.]+)"(?:[^>]*?\bdur="([\d.]+)")?[^>]*>([^<]+)<\/text>/g
     let m
     while ((m = reText.exec(rawText)) !== null) {
       const startMs = Math.round(parseFloat(m[1]) * 1000)
-      const phrase  = decodeXmlEntities(m[2])
+      const durMs   = m[2] != null ? Math.round(parseFloat(m[2]) * 1000) : undefined
+      const phrase  = decodeXmlEntities(m[3])
       for (const raw of phrase.split(/\s+/)) {
         const word = raw.toLowerCase().replace(/[^a-z]/g, '')
-        if (word.length >= 3) result.push({ word, startMs })
+        if (word.length >= 3) result.push(durMs != null ? { word, startMs, durMs } : { word, startMs })
       }
     }
-    // Variant 2: <p t="milliseconds"> (InnerTube fmt=json3 fallback XML)
-    const reP = /<p t="(\d+)"[^>]*>([^<]*(?:<s[^>]*>[^<]*<\/s>[^<]*)*)<\/p>/g
+    // Variant 2: <p t="milliseconds" d="milliseconds"> (InnerTube fmt=json3 fallback XML)
+    const reP = /<p t="(\d+)"(?:[^>]*?\bd="(\d+)")?[^>]*>([^<]*(?:<s[^>]*>[^<]*<\/s>[^<]*)*)<\/p>/g
     while ((m = reP.exec(rawText)) !== null) {
       const startMs = parseInt(m[1], 10)
+      const durMs   = m[2] != null ? parseInt(m[2], 10) : undefined
       // Inner <s> word tags: <s ac="0">word</s>
       const sWords = []
       const reS = /<s[^>]*>([^<]+)<\/s>/g
       let ms
-      while ((ms = reS.exec(m[2])) !== null) sWords.push(ms[1])
-      const phrase = decodeXmlEntities(sWords.length ? sWords.join(' ') : m[2].replace(/<[^>]+>/g, ''))
+      while ((ms = reS.exec(m[3])) !== null) sWords.push(ms[1])
+      const phrase = decodeXmlEntities(sWords.length ? sWords.join(' ') : m[3].replace(/<[^>]+>/g, ''))
       for (const raw of phrase.split(/\s+/)) {
         const word = raw.toLowerCase().replace(/[^a-z]/g, '')
-        if (word.length >= 3) result.push({ word, startMs })
+        if (word.length >= 3) result.push(durMs != null ? { word, startMs, durMs } : { word, startMs })
       }
     }
     if (result.length > 0) console.log(`[transcript] parsed ${result.length} tokens (xml)`)

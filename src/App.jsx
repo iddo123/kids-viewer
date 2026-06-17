@@ -46,8 +46,73 @@ function fmtSec(s) {
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
 }
 
+// ── Quiet-slot fire timing ────────────────────────────────────────────────────
+// We never pause mid-sentence. After a challenge word is spoken, look ahead up to
+// one minute for the first ≥1 s silence between caption lines and fire the
+// challenge there. If speech is continuous, wait for the caption line ("sentence")
+// playing at the one-minute mark to finish. This needs caption durations
+// (json3 dDurationMs); without them we fall back to "2 s after the word".
+const QUIET_SLOT_MS      = 1000   // a usable silent slot = ≥1 s gap between lines
+const QUIET_LOOKAHEAD_MS = 60000  // search up to 1 minute past the spoken word
+const QUIET_CUSHION_MS   = 200    // fire just inside the silence, after speech stops
+const DEFAULT_DELAY_MS   = 2000   // legacy fallback: 2 s after the word starts
+
+// Build a sorted, de-duplicated caption-line timeline from word tokens.
+// Each line is { start, end }; end is clamped to the next line's start so an
+// over-long duration never swallows the following line.
+function buildCueTimeline(transcriptWords) {
+  const byStart = new Map()
+  for (const t of transcriptWords) {
+    if (!byStart.has(t.startMs) || (t.durMs != null && byStart.get(t.startMs) == null)) {
+      byStart.set(t.startMs, t.durMs ?? null)
+    }
+  }
+  const starts = [...byStart.keys()].sort((a, b) => a - b)
+  const hasDurations = [...byStart.values()].some(d => d != null)
+  const cues = starts.map((start, i) => {
+    const dur       = byStart.get(start)
+    const nextStart = i + 1 < starts.length ? starts[i + 1] : Infinity
+    const end       = dur != null ? Math.min(start + dur, nextStart) : start
+    return { start, end }
+  })
+  return { cues, hasDurations }
+}
+
+// Find the time (ms) to fire a word's challenge: the first ≥1 s silence within a
+// minute of the word, else the end of the caption line playing at the 1-minute
+// mark ("sentence ends"). Falls back to "2 s after the word" without durations.
+function findQuietFireMs(wordStartMs, cues, hasDurations) {
+  const legacy = wordStartMs + DEFAULT_DELAY_MS
+  if (!hasDurations || cues.length === 0) return legacy
+
+  const limit = wordStartMs + QUIET_LOOKAHEAD_MS
+
+  // Start scanning from the caption line the word is in (first line whose speech
+  // hasn't already finished before the word starts).
+  let i = 0
+  while (i < cues.length && cues[i].end <= wordStartMs) i++
+
+  for (; i < cues.length; i++) {
+    const silenceStart = cues[i].end
+    if (silenceStart > limit) break
+    const nextStart = i + 1 < cues.length ? cues[i + 1].start : Infinity
+    if (nextStart - silenceStart >= QUIET_SLOT_MS) {
+      return Math.max(silenceStart + QUIET_CUSHION_MS, legacy)
+    }
+  }
+
+  // No silence within the minute → wait until the caption line playing at the
+  // one-minute mark finishes (the next clean sentence break).
+  for (let j = 0; j < cues.length; j++) {
+    if (cues[j].end >= limit) return Math.max(cues[j].end, legacy)
+  }
+  return Math.max(limit, legacy)
+}
+
 export function buildChallengeSchedule(transcriptWords, getLevelFn, startAfterSec = 0, minGapSec = 60) {
   if (!transcriptWords.length) return []
+
+  const { cues, hasDurations } = buildCueTimeline(transcriptWords)
 
   // Count frequency of each content word
   const freq = {}
@@ -93,12 +158,14 @@ export function buildChallengeSchedule(transcriptWords, getLevelFn, startAfterSe
 
     // Pick the highest-scoring word (frequency + visual concreteness)
     const best    = candidates.reduce((a, b) => wordScore(b.word) > wordScore(a.word) ? b : a)
-    // Add 2 s so the challenge fires *after* the word has been spoken, not as it starts
-    const timeSec = Math.floor(best.startMs / 1000) + 2
+    // Fire during the next quiet moment (≥1 s silence within a minute) instead of
+    // interrupting mid-sentence; falls back to 2 s after the word without durations.
+    const fireMs  = findQuietFireMs(best.startMs, cues, hasDurations)
+    const timeSec = Math.floor(fireMs / 1000)
 
     schedule.push({ word: best.word, timeSec, fired: false })
     usedWords.add(best.word)
-    searchFrom = timeSec   // next challenge must be ≥ timeSec + minGapSec
+    searchFrom = timeSec   // next challenge must be ≥ timeSec + minGapSec (keeps fires spaced)
   }
 
   const sorted = schedule.sort((a, b) => a.timeSec - b.timeSec)
@@ -194,7 +261,11 @@ export default function App() {
     scheduleRef.current = schedule
     setScheduleCount(schedule.length)
     setScheduleReady(true)
-    console.log('[schedule]', schedule.map(s => `${s.word}@${fmtSec(s.timeSec)}`).join(', '))
+    if (schedule.length === 0) {
+      console.warn('[schedule] No challenges scheduled — none of the transcript words matched the vocabulary list')
+    } else {
+      console.log('[schedule]', schedule.map(s => `${s.word}@${fmtSec(s.timeSec)}`).join(', '))
+    }
   }, [transcriptWords])
 
 

@@ -51,6 +51,18 @@ describe('parseJson3Transcript', () => {
     expect(words).toContain('its')
   })
 
+  it('captures caption-line duration (durMs) from JSON3 dDurationMs', () => {
+    const raw = JSON.stringify({
+      events: [{ tStartMs: 1000, dDurationMs: 2500, segs: [{ utf8: 'cat' }] }],
+    })
+    expect(parseJson3Transcript(raw)).toContainEqual({ word: 'cat', startMs: 1000, durMs: 2500 })
+  })
+
+  it('captures dur from the XML <text start dur> format', () => {
+    const raw = `<transcript><text start="1.5" dur="2.0">cat</text></transcript>`
+    expect(parseJson3Transcript(raw)).toContainEqual({ word: 'cat', startMs: 1500, durMs: 2000 })
+  })
+
   it('skips events missing tStartMs', () => {
     const raw = JSON.stringify({
       events: [

@@ -60,7 +60,7 @@ describe('buildChallengeSchedule', () => {
   it('challenge timeSec is 2s after the word appears in the transcript', () => {
     const words = [w('cat', 10), w('cat', 700)]
     const schedule = buildChallengeSchedule(words, noLevel, 0, 60)
-    expect(schedule[0].timeSec).toBe(12)   // 10 + 2
+    expect(schedule[0].timeSec).toBe(12)   // 10 + 2 (no durations → legacy timing)
   })
 
   it('all schedule entries have word, timeSec and fired=false', () => {
@@ -89,5 +89,42 @@ describe('buildChallengeSchedule', () => {
     const skipped = buildChallengeSchedule(words, noLevel, 50, 60)
     expect(skipped.every(s => s.timeSec >= 50)).toBe(true)
     expect(skipped.length).toBeLessThanOrEqual(full.length)
+  })
+})
+
+// ── Quiet-slot fire timing (requires caption durations) ──────────────────────
+// When caption lines carry durations, a challenge fires during the first ≥1 s
+// silence within a minute of the word, instead of 2 s after it.
+describe('buildChallengeSchedule — quiet-slot timing', () => {
+  // word token carrying a caption-line duration (seconds)
+  const wd = (word, sec, durSec) => ({ word, startMs: Math.round(sec * 1000), durMs: Math.round(durSec * 1000) })
+
+  it('fires in the first ≥1s silence after the word', () => {
+    const words = [
+      wd('cat', 10, 2),     // 10–12s
+      wd('the', 12.3, 0.5), // 12.3–12.8s  (gap 0.3s — too short)
+      wd('and', 13, 3),     // 13–16s      (gap 0.2s — too short)
+      wd('the', 20, 1),     // 20s         (gap 16→20 = 4s ≥1s silence)
+      wd('cat', 80, 1),     // keeps the video long enough for the window
+    ]
+    const schedule = buildChallengeSchedule(words, noLevel, 0, 60)
+    expect(schedule[0].word).toBe('cat')
+    expect(schedule[0].timeSec).toBe(16)  // silence starts at 16s, not 12s (legacy)
+  })
+
+  it('waits for the caption line to end when speech is continuous for a minute', () => {
+    const words = [wd('cat', 10, 2)]      // 10–12s
+    // back-to-back 3s lines (no gaps) from 12s out past the 1-minute mark
+    for (let s = 12; s <= 90; s += 3) words.push(wd('the', s, 3))
+    const schedule = buildChallengeSchedule(words, noLevel, 0, 60)
+    expect(schedule[0].word).toBe('cat')
+    // limit = 70s; the line spanning that mark is [69,72] → fire at its end, 72s
+    expect(schedule[0].timeSec).toBe(72)
+  })
+
+  it('still uses 2s-after-word timing when no durations are present', () => {
+    const words = [w('cat', 10), w('cat', 700)]   // plain {word,startMs}
+    const schedule = buildChallengeSchedule(words, noLevel, 0, 60)
+    expect(schedule[0].timeSec).toBe(12)
   })
 })
