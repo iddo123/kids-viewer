@@ -52,8 +52,20 @@ describe('checkPronunciation', () => {
     expect(checkPronunciation('I said dog', 'dog')).toBe(true)
   })
 
-  it('accepts a near-match within 40% edit distance (elefant → elephant)', () => {
+  it('accepts a near-match within the edit-distance tolerance (elefant → elephant)', () => {
     expect(checkPronunciation('elefant', 'elephant')).toBe(true)
+  })
+
+  // Pins the matcher tolerance at 60% (src/utils/helpers.js). For a 5-letter
+  // target the ceiling is ceil(5 × 0.6) = 3 edits. These two cases bracket it:
+  // a 0.4 threshold would reject the first, a 0.8 threshold would accept the
+  // second — so they fail if the constant drifts.
+  it('accepts a garbled word at the 60% edit-distance ceiling (3 of 5 letters off)', () => {
+    expect(checkPronunciation('zooru', 'zebra')).toBe(true)   // 3 edits ≤ 3
+  })
+
+  it('rejects a word beyond the 60% edit-distance ceiling (4 of 5 letters off)', () => {
+    expect(checkPronunciation('zoolu', 'zebra')).toBe(false)  // 4 edits > 3
   })
 
   it('rejects a clearly wrong word', () => {
