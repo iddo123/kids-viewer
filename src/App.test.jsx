@@ -100,12 +100,27 @@ describe('App', () => {
     expect(screen.getByText('← Back')).toBeInTheDocument()
   })
 
-  it('increments the video count when starting a video within the free limit', () => {
+  it('counts a video toward the free limit only once its captions load', () => {
     const increment = vi.fn()
     useVideoCount.mockReturnValue({ count: 0, increment })
+    useTranscriptWords.mockImplementation((videoId) =>
+      videoId ? { transcriptWords: TRANSCRIPT, status: 'ready' } : { transcriptWords: [], status: 'idle' },
+    )
     render(<App />)
     start()
     expect(increment).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('video-player')).toBeInTheDocument()
+  })
+
+  it('does NOT count a video whose captions fail to load', () => {
+    const increment = vi.fn()
+    useVideoCount.mockReturnValue({ count: 0, increment })
+    useTranscriptWords.mockImplementation((videoId) =>
+      videoId ? { transcriptWords: [], status: 'unavailable' } : { transcriptWords: [], status: 'idle' },
+    )
+    render(<App />)
+    start()
+    expect(increment).not.toHaveBeenCalled()
     expect(screen.getByTestId('video-player')).toBeInTheDocument()
   })
 

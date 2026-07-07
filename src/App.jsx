@@ -205,6 +205,7 @@ export default function App() {
   const [scheduleCount, setScheduleCount]         = useState(0)
   const [scheduleReady, setScheduleReady]         = useState(false)
   const [challengeInterval, setChallengeInterval] = useState(60)
+  const [skipSpeech, setSkipSpeech]               = useState(false)
 
   const languageRef    = useRef(language)
   const inChallengeRef = useRef(false)
@@ -215,6 +216,7 @@ export default function App() {
   const ytPlayerRef          = useRef(null)
   const dictionaryRef        = useRef({})
   const challengeIntervalRef = useRef(60)
+  const countedVideoRef      = useRef(null)   // videoId already counted toward the free limit
 
   useEffect(() => { languageRef.current = language }, [language])
 
@@ -239,6 +241,16 @@ export default function App() {
 
   // ── Transcript ────────────────────────────────────────────────────────────
   const { transcriptWords, status: transcriptStatus } = useTranscriptWords(videoId)
+
+  // Count a video toward the free limit only once its captions load successfully.
+  // A video with no captions never becomes a real lesson, so it shouldn't burn a
+  // credit — otherwise failed loads silently eat the free quota.
+  useEffect(() => {
+    if (transcriptStatus === 'ready' && videoId && countedVideoRef.current !== videoId) {
+      countedVideoRef.current = videoId
+      videoCount.increment()
+    }
+  }, [transcriptStatus, videoId, videoCount.increment])
 
   // Build challenge schedule once per video when transcript arrives
   useEffect(() => {
@@ -376,10 +388,24 @@ export default function App() {
       })
     }
 
-    if (inChallengeRef.current) return
+    if (inChallengeRef.current) {
+      // eslint-disable-next-line no-console
+      console.log(`[fire-check] blocked: inChallenge=true at time=${currentTime.toFixed(1)}`)
+      return
+    }
+
+    // TEMP DIAGNOSTIC: report when a due entry exists but isn't firing, and why.
+    const due = scheduleRef.current.find(s => currentTime >= s.timeSec && !s._logged && (currentTime - s.timeSec) < 2)
+    if (due) {
+      due._logged = true
+      // eslint-disable-next-line no-console
+      console.log(`[fire-check] due "${due.word}"@${due.timeSec}s time=${currentTime.toFixed(1)} fired=${due.fired} scheduleLen=${scheduleRef.current.length}`)
+    }
 
     const next = scheduleRef.current.find(s => !s.fired && currentTime >= s.timeSec)
     if (next) {
+      // eslint-disable-next-line no-console
+      console.log(`[fire-check] FIRING "${next.word}" at time=${currentTime.toFixed(1)}`)
       next.fired = true
       inChallengeRef.current = true
       triggerChallenge(next.word, currentTime)
@@ -387,14 +413,15 @@ export default function App() {
   }, [triggerChallenge])
 
   // ── Navigation ────────────────────────────────────────────────────────────
-  const handleStart = useCallback((url, lang, interval = 60) => {
+  const handleStart = useCallback((url, lang, interval = 60, skip = false) => {
     const id = extractVideoId(url)
     if (!id) return
-    if (shouldShowUpgrade(subscription.isActive, videoCount.count)) {
+    if (shouldShowUpgrade(subscription.isActive, videoCount.count, subscription.loading)) {
       setShowUpgrade(true)
       return
     }
-    videoCount.increment()
+    // Note: the free-video credit is consumed only after captions load
+    // successfully (see the transcript effect above), not on this click.
     scheduleRef.current          = []
     inChallengeRef.current       = false
     activeWordRef.current        = null
@@ -402,6 +429,7 @@ export default function App() {
     setVideoId(id)
     setLanguage(lang)
     setChallengeInterval(interval)
+    setSkipSpeech(skip)
     setScore(0)
     setStreak(0)
     setScheduleCount(0)
@@ -411,7 +439,7 @@ export default function App() {
     setPaused(false)
     setVideoError(null)
     setScreen('playing')
-  }, [subscription.isActive, videoCount])
+  }, [subscription.isActive, subscription.loading, videoCount])
 
   const handleBack = useCallback(() => {
     ttsAbortRef.current    = true
@@ -531,6 +559,7 @@ export default function App() {
         <WordChallenge
           wordEntry={activeWord}
           language={language}
+          skipSpeech={skipSpeech}
           onSuccess={handleSuccess}
           onSkip={handleSkip}
         />

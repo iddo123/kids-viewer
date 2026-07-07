@@ -14,7 +14,7 @@ export const vocabulary = [
   { word: 'horse',     emoji: '🐴', imageQuery: 'brown,horse,field',        translations: { he: 'סוס',      es: 'caballo',    fr: 'cheval',      de: 'Pferd',      ar: 'حصان',     ru: 'лошадь',     zh: '马',     pt: 'cavalo'     } },
   { word: 'cow',       emoji: '🐄', imageQuery: 'cow,farm,field',           translations: { he: 'פרה',      es: 'vaca',       fr: 'vache',       de: 'Kuh',        ar: 'بقرة',     ru: 'корова',     zh: '牛',     pt: 'vaca'       } },
   { word: 'pig',       emoji: '🐷', imageQuery: 'pink,pig,cute',            translations: { he: 'חזיר',     es: 'cerdo',      fr: 'cochon',      de: 'Schwein',    ar: 'خنزير',    ru: 'свинья',     zh: '猪',     pt: 'porco'      } },
-  { word: 'sheep',     emoji: '🐑', imageQuery: 'white,sheep,field',        translations: { he: 'כבש',      es: 'oveja',      fr: 'mouton',      de: 'Schaf',      ar: 'خروف',     ru: 'овца',       zh: '羊',     pt: 'ovelha'     } },
+  { word: 'sheep',     emoji: '🐑', imageQuery: 'white,sheep,field',        translations: { he: 'כֶּבֶשׂ',      es: 'oveja',      fr: 'mouton',      de: 'Schaf',      ar: 'خروف',     ru: 'овца',       zh: '羊',     pt: 'ovelha'     } },
   { word: 'bear',      emoji: '🐻', imageQuery: 'brown,bear,forest',        translations: { he: 'דוב',      es: 'oso',        fr: 'ours',        de: 'Bär',        ar: 'دب',       ru: 'медведь',    zh: '熊',     pt: 'urso'       } },
   { word: 'lion',      emoji: '🦁', imageQuery: 'lion,mane,wild',           translations: { he: 'אריה',     es: 'león',       fr: 'lion',        de: 'Löwe',       ar: 'أسد',      ru: 'лев',        zh: '狮子',   pt: 'leão'       } },
   { word: 'monkey',    emoji: '🐒', imageQuery: 'monkey,jungle,cute',       translations: { he: 'קוף',      es: 'mono',       fr: 'singe',       de: 'Affe',       ar: 'قرد',      ru: 'обезьяна',   zh: '猴子',   pt: 'macaco'     } },
@@ -120,7 +120,6 @@ export const vocabulary = [
   { word: 'farm',      emoji: '🚜', imageQuery: 'green,farm,countryside',   translations: { he: 'חווה',     es: 'granja',     fr: 'ferme',       de: 'Bauernhof',  ar: 'مزرعة',    ru: 'ферма',      zh: '农场',   pt: 'fazenda'    } },
   { word: 'park',      emoji: '🌳', imageQuery: 'park,playground,children', translations: { he: 'פארק',     es: 'parque',     fr: 'parc',        de: 'Park',       ar: 'حديقة',    ru: 'парк',       zh: '公园',   pt: 'parque'     } },
   { word: 'school',    emoji: '🏫', imageQuery: 'school,building,colorful', translations: { he: 'בית ספר',  es: 'escuela',    fr: 'école',       de: 'Schule',     ar: 'مدرسة',    ru: 'школа',      zh: '学校',   pt: 'escola'     } },
-  { word: 'zoo',       emoji: '🦁', imageQuery: 'zoo,animals,children',     translations: { he: 'גן חיות',  es: 'zoológico',  fr: 'zoo',         de: 'Zoo',        ar: 'حديقة حيوان',ru: 'зоопарк',  zh: '动物园', pt: 'zoológico'  } },
 
   // ── Shapes ────────────────────────────────────────────────────────────────
   { word: 'circle',    emoji: '⭕', imageQuery: 'circle,shape,colorful',    translations: { he: 'עיגול',    es: 'círculo',    fr: 'cercle',      de: 'Kreis',      ar: 'دائرة',    ru: 'круг',       zh: '圆形',   pt: 'círculo'    } },
@@ -243,7 +242,7 @@ export const CATEGORIES = {
   clothing:    ['hat','shoe','dress','shirt','pants','sock','coat'],
   family:      ['baby','family','boy','girl','friend'],
   instruments: ['drum','guitar','piano'],
-  places:      ['beach','farm','park','school','zoo'],
+  places:      ['beach','farm','park','school'],
   shapes:      ['circle','heart','square','triangle'],
   weather:     ['cold','hot'],
   feelings:    ['happy','sad','angry','scared'],

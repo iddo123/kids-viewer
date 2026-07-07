@@ -6,7 +6,7 @@ import SetupScreen from './SetupScreen'
 vi.mock('./AccountMenu', () => ({ default: () => <div data-testid="account-menu" /> }))
 
 describe('SetupScreen', () => {
-  afterEach(() => vi.restoreAllMocks())
+  afterEach(() => { vi.restoreAllMocks(); localStorage.clear() })
 
   it('renders the title and current app version', () => {
     render(<SetupScreen onStart={() => {}} stats={null} />)
@@ -61,7 +61,7 @@ describe('SetupScreen', () => {
       target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
     })
     fireEvent.click(screen.getByText('🚀 Start Learning!'))
-    expect(onStart).toHaveBeenCalledWith('https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'es', 120)
+    expect(onStart).toHaveBeenCalledWith('https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'es', 120, false)
   })
 
   it('selects a suggested video thumbnail and starts with its URL', () => {
@@ -71,7 +71,25 @@ describe('SetupScreen', () => {
     fireEvent.click(thumb)
     expect(thumb.className).toContain('thumb-btn--selected')
     fireEvent.click(screen.getByText('🚀 Start Learning!'))
-    expect(onStart).toHaveBeenCalledWith('https://www.youtube.com/watch?v=I9-FpvBSN-o', 'he', 60)
+    expect(onStart).toHaveBeenCalledWith('https://www.youtube.com/watch?v=I9-FpvBSN-o', 'he', 60, false)
+  })
+
+  it('starts with skipSpeech=true when the pictures-only box is checked', () => {
+    const onStart = vi.fn()
+    render(<SetupScreen onStart={onStart} stats={null} />)
+    fireEvent.click(screen.getByText('Peppa Pig 🐷'))
+    fireEvent.click(screen.getByRole('checkbox', { name: /skip speaking/i }))
+    fireEvent.click(screen.getByText('🚀 Start Learning!'))
+    expect(onStart).toHaveBeenCalledWith('https://www.youtube.com/watch?v=I9-FpvBSN-o', 'he', 60, true)
+  })
+
+  it('remembers the pictures-only preference across renders via localStorage', () => {
+    const onStart = vi.fn()
+    const { unmount } = render(<SetupScreen onStart={onStart} stats={null} />)
+    fireEvent.click(screen.getByRole('checkbox', { name: /skip speaking/i }))
+    unmount()
+    render(<SetupScreen onStart={onStart} stats={null} />)
+    expect(screen.getByRole('checkbox', { name: /skip speaking/i })).toBeChecked()
   })
 
   it('hides the dictionary stats when there are no learned words', () => {

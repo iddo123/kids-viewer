@@ -36,6 +36,14 @@ describe('UpgradePrompt', () => {
     expect(screen.getByRole('button', { name: '⭐ Upgrade Now' })).not.toBeDisabled()
   })
 
+  it('shows an error instead of navigating when checkout returns no url', async () => {
+    startCheckout.mockResolvedValue('')   // 2xx response but missing url
+    render(<UpgradePrompt onClose={() => {}} />)
+    fireEvent.click(screen.getByText('⭐ Upgrade Now'))
+    await waitFor(() => expect(screen.getByText('Something went wrong — please try again.')).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: '⭐ Upgrade Now' })).not.toBeDisabled()
+  })
+
   it('disables both buttons while the upgrade request is in flight', () => {
     startCheckout.mockReturnValue(new Promise(() => {})) // never resolves
     render(<UpgradePrompt onClose={() => {}} />)

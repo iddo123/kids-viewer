@@ -13,20 +13,6 @@ const GRADIENTS = [
 ]
 function strHash(s) { return s.split('').reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 0) }
 
-function WordArt({ word }) {
-  const [g1, g2] = GRADIENTS[Math.abs(strHash(word)) % GRADIENTS.length]
-  const letters = word.split('')
-  return (
-    <div className="word-art" style={{ '--c1': g1, '--c2': g2 }}>
-      {letters.map((ch, i) => (
-        <span key={i} className="word-art-letter" style={{ '--i': i, '--n': letters.length }}>
-          {ch}
-        </span>
-      ))}
-    </div>
-  )
-}
-
 // ── Translation art ───────────────────────────────────────────────────────────
 function TranslationArt({ word, language }) {
   const [g1, g2] = GRADIENTS[(Math.abs(strHash(word)) + 2) % GRADIENTS.length]
@@ -63,24 +49,22 @@ function formatTime(sec) {
 const MAX_ATTEMPTS      = 2
 const CHALLENGE_TIMEOUT = 10   // seconds per attempt
 
-// Challenges are answered by tapping a picture. The speech/typing answer flow
-// below is kept fully intact but disabled — flip this back to true to restore
-// microphone answering.
-const SPEECH_ENABLED = false
+// Each challenge starts in SPEECH mode — the child has to say the word out loud.
+// If that first spoken attempt fails (wrong word, timeout, or no microphone) the
+// challenge falls back to TAP mode, where the child clicks the right picture.
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }) {
-  const { listening, error: micError, startListening, stopListening, supported } = useSpeechRecognition()
+export default function WordChallenge({ wordEntry, language, skipSpeech = false, onSuccess, onSkip }) {
+  const { error: micError, startListening, stopListening, supported } = useSpeechRecognition()
 
   // Always start at 'presenting' — card shows, then TTS plays
   const [phase, setPhase]           = useState('presenting')
   const [spokenText, setSpokenText] = useState('')
-  const [typedText, setTypedText]   = useState('')
-  const [useTypeMode, setUseTypeMode] = useState(false)
   const [timeLeft, setTimeLeft]     = useState(CHALLENGE_TIMEOUT)
   const [activeSyllable, setActiveSyllable] = useState(-1)
   const [wrongPicks, setWrongPicks] = useState([])   // option words already ruled out
-  const attemptsRef = useRef(0)
+  const attemptsRef   = useRef(0)       // wrong picture taps
+  const spokeWrongRef = useRef(false)   // true once the spoken attempt has failed
   const [attempts, setAttempts]     = useState(0)
   const cancelRef        = useRef(false)
   const timersRef        = useRef([])   // all pending setTimeout IDs
@@ -109,7 +93,9 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
   // Tap-the-picture options: the target word plus same-category distractors.
   const options = useMemo(() => getChallengeOptions(wordEntry.word, 3), [wordEntry.word])
 
-  const canUseMic = supported && !useTypeMode && micError !== 'not-allowed'
+  // skipSpeech lets kids without a microphone (or who'd rather not talk) jump
+  // straight to the tap-the-picture challenge — same path as having no mic.
+  const canUseMic = supported && micError !== 'not-allowed' && !skipSpeech
 
   // ── Presentation: speak word → translation → beep → listen ───────────────
   useEffect(() => {
@@ -129,7 +115,8 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
       if (cancelled) return
       await speakAndWait(wordEntry.word, 'en-US')
 
-      // Sound it out, syllable by syllable, for multi-syllable words
+      // Sound it out, syllable by syllable, for multi-syllable words, so the
+      // child can hear how to pronounce it before saying it back.
       if (syllables.length > 1) {
         if (cancelled) return
         await sleep(200)
@@ -148,7 +135,7 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
       if (cancelled) return
       await speakTranslation(wordEntry.word, language, translation, ttsLocale)
 
-      // 1-second gap then repeat
+      // Repeat the word + translation a second time.
       if (cancelled) return
       await sleep(1000)
       if (cancelled) return
@@ -156,13 +143,22 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
       if (cancelled) return
       await speakTranslation(wordEntry.word, language, translation, ttsLocale)
 
+      // No microphone available — skip the spoken attempt and go straight to
+      // tapping the picture.
+      if (!canUseMic) {
+        if (cancelled) return
+        await sleep(150)
+        if (cancelled) return
+        setPhase('choosing')
+        return
+      }
+
+      // Beep to cue the child, then listen for them to say the word.
       if (cancelled) return
       playBeep()
       await sleep(150)
-
       if (cancelled) return
-      if (!SPEECH_ENABLED) setPhase('choosing')
-      else setPhase(canUseMic ? 'listening' : 'typing')
+      setPhase('listening')
     }
 
     present()
@@ -192,51 +188,65 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
     triggerMic()
   }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Mic error → fall back to typing ──────────────────────────────────────
+  // ── Always release the mic when leaving the listening phase ─────────────────
+  // The speech hook auto-restarts through silence, so it only ever stops when
+  // stopListening() is called. This cleanup guarantees that happens on every
+  // exit from listening — timeout, correct answer, skip, or unmount — otherwise
+  // the restart loop would keep the microphone open indefinitely.
+  useEffect(() => {
+    if (phase !== 'listening') return
+    return () => stopListening()
+  }, [phase, stopListening])
+
+  // ── Mic error → fall back to tapping the picture ─────────────────────────
   useEffect(() => {
     if (phase === 'listening' && micError && micError !== 'no-speech' && micError !== 'aborted') {
-      setUseTypeMode(true)
-      setPhase('typing')
+      handleSpeechFail()
     }
-  }, [micError, phase])
+  }, [micError, phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Countdown timer ───────────────────────────────────────────────────────
+  // The timeout action (moving on when time runs out) is fired from the interval
+  // body — NOT from inside a setState updater. The mic hook re-renders often via
+  // setListening, and a side effect buried in an impure updater can be dropped,
+  // leaving us stuck in 'listening' with the microphone looping forever. Elapsed
+  // time is measured against a start timestamp so dropped ticks can't stall it.
   useEffect(() => {
-    if (phase !== 'listening' && phase !== 'typing' && phase !== 'choosing') return
+    if (phase !== 'listening' && phase !== 'choosing') return
     failHandledRef.current = false   // reset guard for each new response session
     setTimeLeft(CHALLENGE_TIMEOUT)
+    const startedAt = Date.now()
     const id = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(id)
-          // Guard prevents double-fire from React StrictMode's double-invocation of state updaters
-          if (!failHandledRef.current) {
-            failHandledRef.current = true
-            SPEECH_ENABLED ? handleFail() : handlePickTimeout()
-          }
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+      const remaining = CHALLENGE_TIMEOUT - Math.floor((Date.now() - startedAt) / 1000)
+      setTimeLeft(remaining > 0 ? remaining : 0)
+      if (remaining <= 0 && !failHandledRef.current) {
+        failHandledRef.current = true
+        clearInterval(id)
+        // Ran out of time: a missed spoken attempt drops to tapping the
+        // picture; a missed tap reveals the answer.
+        phase === 'listening' ? handleSpeechFail() : handlePickTimeout()
+      }
+    }, 250)
     return () => clearInterval(id)
   }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Fail: timer expired — one retry with re-presentation, then skip ─────────
-  function handleFail() {
+  // ── Spoken attempt failed — switch to tapping the right picture ─────────────
+  function handleSpeechFail() {
     stopListening()
-    attemptsRef.current += 1
-    setAttempts(attemptsRef.current)
-    if (attemptsRef.current >= MAX_ATTEMPTS) {
-      setPhase('answer')
-      schedule(() => onSkip(), 3500)
-    } else {
-      setPhase('fail')
-      schedule(() => { setTypedText(''); setSpokenText(''); setPhase('presenting') }, 800)
-    }
+    if (spokeWrongRef.current) return   // already switched to tap mode
+    spokeWrongRef.current = true
+    setSpokenText('')
+    setPhase('choosing')
   }
 
-  // ── Answer ────────────────────────────────────────────────────────────────
+  // Points awarded on success — full marks for saying it, dropping a tier for a
+  // missed spoken attempt and for each wrong picture tap.
+  function successPoints() {
+    const tier = (spokeWrongRef.current ? 1 : 0) + attemptsRef.current
+    return tier === 0 ? 100 : tier === 1 ? 50 : 25
+  }
+
+  // ── Answer (spoken) ─────────────────────────────────────────────────────────
   function handleAnswer(text) {
     const correct = checkPronunciation(text, wordEntry.word)
     console.log(
@@ -244,17 +254,10 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
     )
     if (correct) {
       setPhase('success')
-      const pts = attemptsRef.current === 0 ? 100 : 50
-      schedule(() => onSuccess(pts), 1100)
+      schedule(() => onSuccess(successPoints()), 1100)
     } else {
-      // Wrong guess within the 10s window — reopen the mic after a minimal
-      // engine-reset gap. Use startListening directly (not triggerMic) so
-      // the "I heard: X" feedback stays visible until the next result arrives.
-      schedule(() => {
-        if (phaseRef.current === 'listening') {
-          startListening((best, allAlts) => speechCallbackRef.current(best, allAlts))
-        }
-      }, 100)
+      // First spoken try missed — move on to tapping the right picture.
+      handleSpeechFail()
     }
   }
 
@@ -263,8 +266,7 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
     if (phaseRef.current !== 'choosing') return
     if (optionWord === wordEntry.word) {
       setPhase('success')
-      const pts = attemptsRef.current === 0 ? 100 : attemptsRef.current === 1 ? 50 : 25
-      schedule(() => onSuccess(pts), 1100)
+      schedule(() => onSuccess(successPoints()), 1100)
     } else {
       // Wrong picture: rule it out, count the attempt, reveal the answer once
       // both distractors are exhausted.
@@ -286,16 +288,10 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
     schedule(() => onSkip(), 3500)
   }
 
-  const handleTypeSubmit = (e) => {
-    e.preventDefault()
-    if (!typedText.trim()) return
-    setSpokenText(typedText)
-    handleAnswer(typedText)
-  }
-
   const handleSkip = () => {
     cancelRef.current = true
     cancelSpeech()
+    stopListening()
     timersRef.current.forEach(clearTimeout)
     timersRef.current = []
     onSkip()
@@ -342,15 +338,9 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
           )}
         </div>
 
-        {/* English visual — hidden while choosing so the answer isn't given away */}
-        {phase !== 'choosing' && (
-          <div className="challenge-image-wrap">
-            {!wordEntry.isDynamic
-              ? <div className="challenge-emoji-large">{wordEntry.emoji}</div>
-              : <WordArt word={wordEntry.word} />
-            }
-          </div>
-        )}
+        {/* No word picture is shown during presentation — the child must learn
+            the word from the audio, not by memorising an image. The only place
+            a picture appears is the tappable choice grid below. */}
 
         {/* Translation art + flag */}
         <div className="challenge-translation-wrap">
@@ -365,17 +355,9 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
             <div className="feedback-text">
               🎉 Amazing!
               <span className="points-badge">
-                +{attemptsRef.current === 0 ? 100 : attemptsRef.current === 1 ? 50 : 25} pts
+                +{successPoints()} pts
               </span>
             </div>
-          </div>
-        )}
-        {phase === 'fail' && (
-          <div className="feedback feedback--fail">
-            <div className="feedback-text">
-              😅 Try again! {attemptsRef.current < MAX_ATTEMPTS && `(${MAX_ATTEMPTS - attemptsRef.current} left)`}
-            </div>
-            {spokenText && <div className="heard-text">I heard: <em>"{spokenText}"</em></div>}
           </div>
         )}
         {phase === 'answer' && (
@@ -386,11 +368,11 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
         )}
 
         {/* Activity section */}
-        {(phase === 'presenting' || phase === 'listening' || phase === 'typing' || phase === 'choosing') && (
+        {(phase === 'presenting' || phase === 'listening' || phase === 'choosing') && (
           <div className="activity-section">
 
             {/* Countdown ring (only during active response phases) */}
-            {(phase === 'listening' || phase === 'typing' || phase === 'choosing') && (
+            {(phase === 'listening' || phase === 'choosing') && (
               <div className="countdown-wrap">
                 <svg className="countdown-ring" viewBox="0 0 36 36">
                   <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e2e8f0" strokeWidth="3" />
@@ -409,7 +391,9 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
 
             {phase === 'choosing' ? (
               <>
-                <p className="mic-prompt mic-prompt--go">Which one is it? 👆</p>
+                <p className="mic-prompt mic-prompt--go">
+                  {spokeWrongRef.current ? 'Good try! Now tap the picture 👆' : 'Which one is it? 👆'}
+                </p>
                 <div className="choice-grid">
                   {options.map(opt => {
                     const ruledOut = wrongPicks.includes(opt.word)
@@ -430,57 +414,22 @@ export default function WordChallenge({ wordEntry, language, onSuccess, onSkip }
                   <div className="heard-text heard-text--retry">😅 Not quite — try again!</div>
                 )}
               </>
-            ) : phase === 'typing' ? (
-              <>
-                <p className="mic-prompt">Type the word! ⌨️</p>
-                <form className="type-form" onSubmit={handleTypeSubmit}>
-                  <input
-                    className="type-input"
-                    type="text"
-                    value={typedText}
-                    onChange={e => setTypedText(e.target.value)}
-                    placeholder={wordEntry.word.replace(/./g, '_ ')}
-                    autoFocus
-                    autoComplete="off"
-                    autoCorrect="off"
-                    spellCheck={false}
-                  />
-                  <button type="submit" className="type-submit-btn">✓ Check</button>
-                </form>
-                {canUseMic && (
-                  <button className="switch-mode-btn" onClick={() => { setUseTypeMode(false); setPhase('presenting') }}>
-                    🎤 Switch to voice
-                  </button>
-                )}
-              </>
             ) : phase === 'listening' ? (
               <>
-                <p className={`mic-prompt${listening ? ' mic-prompt--go' : ''}`}>
-                  {listening ? '🎤 SAY IT NOW!' : 'Tap the mic to speak! 👇'}
-                </p>
+                {/* The mic stays live for the full countdown and auto-restarts
+                    through silence — so we always show it as actively listening
+                    and never ask the child to press a button to retry. When the
+                    timer runs out the challenge moves on to the picture cards. */}
+                <p className="mic-prompt mic-prompt--go">🎤 Say the word!</p>
                 <div className="mic-container">
-                  {listening && <>
-                    <div className="mic-ripple mic-ripple--1" />
-                    <div className="mic-ripple mic-ripple--2" />
-                    <div className="mic-ripple mic-ripple--3" />
-                  </>}
-                  <button
-                    className={`listening-ring${listening ? ' listening-ring--active' : ' listening-ring--idle'}`}
-                    onClick={triggerMic}
-                    aria-label={listening ? 'Listening' : 'Tap to speak'}
-                  >
+                  <div className="mic-ripple mic-ripple--1" />
+                  <div className="mic-ripple mic-ripple--2" />
+                  <div className="mic-ripple mic-ripple--3" />
+                  <div className="listening-ring listening-ring--active" aria-label="Listening" role="status">
                     🎙
-                    {listening && <span className="rec-dot" />}
-                  </button>
-                </div>
-                {spokenText && (
-                  <div className="heard-text heard-text--retry">
-                    😅 I heard: <em>"{spokenText}"</em> — try again!
+                    <span className="rec-dot" />
                   </div>
-                )}
-                <button className="switch-mode-btn" onClick={() => { setUseTypeMode(true); setPhase('typing') }}>
-                  ⌨️ Type instead
-                </button>
+                </div>
               </>
             ) : (
               /* presenting */

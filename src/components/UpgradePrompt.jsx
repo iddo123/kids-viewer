@@ -11,6 +11,7 @@ export default function UpgradePrompt({ onClose }) {
     setError('')
     try {
       const url = await startCheckout()
+      if (!url) throw new Error('No checkout URL returned')
       window.location.href = url
     } catch {
       setError('Something went wrong — please try again.')

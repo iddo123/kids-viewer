@@ -10,6 +10,7 @@ export function useSpeechRecognition() {
   const recRef          = useRef(null)
   const onResultRef     = useRef(null)
   const stoppedRef      = useRef(false)   // true when we intentionally stopped
+  const restartTimerRef = useRef(null)    // pending silence-restart timeout id
 
   const startListening = useCallback((onResult) => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -35,7 +36,7 @@ export function useSpeechRecognition() {
       try { prev.abort() } catch (_) {}
       // Small gap so the browser fully releases the previous session.
       // Without this, some browsers refuse start() on the new instance.
-      setTimeout(() => { if (!stoppedRef.current) _createAndStart(SR) }, 50)
+      restartTimerRef.current = setTimeout(() => { if (!stoppedRef.current) _createAndStart(SR) }, 50)
     } else {
       _createAndStart(SR)
     }
@@ -77,7 +78,7 @@ export function useSpeechRecognition() {
         // fire for no-speech, and two concurrent _start() calls race each other.
         // Nulling onend also keeps listening=true so the UI doesn't flicker.
         rec.onend = null
-        setTimeout(() => { if (!stoppedRef.current) _start(SR) }, 100)
+        restartTimerRef.current = setTimeout(() => { if (!stoppedRef.current) _start(SR) }, 100)
         return
       }
 
@@ -92,7 +93,7 @@ export function useSpeechRecognition() {
       // stop — the no-speech onerror path handles the common silence case but
       // does not cover all browser-side terminations.
       if (!stoppedRef.current) {
-        setTimeout(() => { if (!stoppedRef.current) _start(SR) }, 100)
+        restartTimerRef.current = setTimeout(() => { if (!stoppedRef.current) _start(SR) }, 100)
       }
     }
 
@@ -105,14 +106,24 @@ export function useSpeechRecognition() {
       // InvalidStateError: browser hasn't released the previous session yet.
       // Retry after a longer gap rather than giving up.
       if (!stoppedRef.current) {
-        setTimeout(() => { if (!stoppedRef.current) _createAndStart(SR) }, 150)
+        restartTimerRef.current = setTimeout(() => { if (!stoppedRef.current) _createAndStart(SR) }, 150)
       }
     }
   }
 
   const stopListening = useCallback(() => {
     stoppedRef.current = true
-    recRef.current?.stop()
+    // Cancel any pending silence-restart so the loop can't respawn the mic.
+    if (restartTimerRef.current) { clearTimeout(restartTimerRef.current); restartTimerRef.current = null }
+    const rec = recRef.current
+    recRef.current = null
+    if (rec) {
+      // Null every handler first so the forced stop can't fire onend/onerror
+      // and schedule another restart, then hard-abort to release the mic now.
+      rec.onstart = null; rec.onresult = null; rec.onerror = null; rec.onend = null
+      try { rec.abort() } catch (_) {}
+      try { rec.stop() } catch (_) {}
+    }
     setListening(false)
   }, [])
 

@@ -15,4 +15,14 @@ describe('shouldShowUpgrade', () => {
     expect(shouldShowUpgrade(false, FREE_VIDEO_LIMIT)).toBe(true)
     expect(shouldShowUpgrade(false, FREE_VIDEO_LIMIT + 1)).toBe(true)
   })
+
+  it('never gates while the subscription status is still loading', () => {
+    // A subscribed user whose status has not yet resolved must not be blocked.
+    expect(shouldShowUpgrade(false, FREE_VIDEO_LIMIT, true)).toBe(false)
+    expect(shouldShowUpgrade(false, FREE_VIDEO_LIMIT + 5, true)).toBe(false)
+  })
+
+  it('gates an over-limit free user once loading has finished', () => {
+    expect(shouldShowUpgrade(false, FREE_VIDEO_LIMIT, false)).toBe(true)
+  })
 })

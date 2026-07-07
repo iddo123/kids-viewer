@@ -284,6 +284,44 @@
   padding: 4px 0 2px;
 }
 
+/* ── Skip-speaking toggle ─────────────────────────────────────────────────── */
+.skip-speech-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.skip-speech-toggle:hover { border-color: #cbd5e1; }
+.skip-speech-toggle:has(input:checked) {
+  border-color: var(--color-navy, #4c51bf);
+  background: #eef2ff;
+}
+.skip-speech-toggle input {
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--color-navy, #4c51bf);
+}
+.skip-speech-text { display: flex; flex-direction: column; gap: 3px; }
+.skip-speech-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--color-navy, #1a202c);
+}
+.skip-speech-hint {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+  line-height: 1.35;
+}
+
 /* ── YouTube search ───────────────────────────────────────────────────────── */
 .search-bar {
   display: flex;

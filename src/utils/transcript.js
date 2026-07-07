@@ -8,6 +8,25 @@
 // from the embedded player data, and returns JSON3 captions — no CORS issues,
 // works for all video types including music videos.
 
+// AbortSignal.timeout() is fairly recent (Chrome 103+/Safari 16+, mid-2022) and
+// missing from many smart-TV browsers, where calling it throws and makes every
+// caption fetch fail — so the app wrongly reports "no captions" on those devices.
+// Fall back to AbortController + setTimeout, and if even that is unavailable run
+// the fetch with no timeout rather than crashing.
+function timeoutSignal(ms) {
+  try {
+    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+      return AbortSignal.timeout(ms)
+    }
+    if (typeof AbortController === 'function') {
+      const ctrl = new AbortController()
+      setTimeout(() => ctrl.abort(), ms)
+      return ctrl.signal
+    }
+  } catch { /* fall through to no-signal */ }
+  return undefined
+}
+
 // Extract ytInitialPlayerResponse JSON from a YouTube watch-page HTML string.
 // Returns the caption baseUrl (signed, can be fetched from any IP) or null.
 function extractCaptionUrl(html) {
@@ -59,7 +78,7 @@ export async function fetchTranscript(videoId) {
 
   for (const proxy of pageProxies) {
     try {
-      const res = await fetch(proxy(watchUrl), { signal: AbortSignal.timeout(12000) })
+      const res = await fetch(proxy(watchUrl), { signal: timeoutSignal(12000) })
       if (!res.ok) { console.warn(`[transcript] page proxy ${proxy(watchUrl).slice(0,40)} → ${res.status}`); continue }
       const html = await res.text()
       const captionUrl = extractCaptionUrl(html)
@@ -67,7 +86,7 @@ export async function fetchTranscript(videoId) {
 
       // Fetch the signed caption URL directly from the browser
       const sep    = captionUrl.includes('?') ? '&' : '?'
-      const capRes = await fetch(`${captionUrl}${sep}fmt=json3`, { signal: AbortSignal.timeout(8000) })
+      const capRes = await fetch(`${captionUrl}${sep}fmt=json3`, { signal: timeoutSignal(8000) })
       if (!capRes.ok) { console.warn(`[transcript] caption fetch → ${capRes.status}`); continue }
       const text = await capRes.text()
       if (text && text.length >= 30 && text.includes('"events"')) {
@@ -80,7 +99,7 @@ export async function fetchTranscript(videoId) {
   // Fallback: server-side proxy (edge function on Cloudflare)
   try {
     const res = await fetch(`/api/transcript?v=${videoId}`, {
-      signal: AbortSignal.timeout(15000),
+      signal: timeoutSignal(15000),
     })
     if (!res.ok) {
       const errBody = await res.text().catch(() => '')
@@ -245,7 +264,7 @@ export async function fetchDynamicWordEntry(word, langCode) {
   let translation = word
   try {
     const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=en|${langCode}`
-    const res  = await fetch(url, { signal: AbortSignal.timeout(5000) })
+    const res  = await fetch(url, { signal: timeoutSignal(5000) })
     if (res.ok) {
       const data = await res.json()
       const t = data?.responseData?.translatedText

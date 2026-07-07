@@ -83,6 +83,14 @@ export default function SetupScreen({ onStart, stats, onHelpOpen, onPrivacyOpen 
   const [lang, setLang]         = useState('he')
   const [interval, setInterval] = useState(60)
   const [error, setError]       = useState('')
+  const [skipSpeech, setSkipSpeech] = useState(() => {
+    try { return localStorage.getItem('kids_viewer_skip_speech') === '1' } catch { return false }
+  })
+
+  const toggleSkipSpeech = (checked) => {
+    setSkipSpeech(checked)
+    try { localStorage.setItem('kids_viewer_skip_speech', checked ? '1' : '0') } catch {}
+  }
 
   const [searchQuery,     setSearchQuery]     = useState('')
   const [searchResults,   setSearchResults]   = useState([])
@@ -166,7 +174,7 @@ export default function SetupScreen({ onStart, stats, onHelpOpen, onPrivacyOpen 
       return
     }
     setError('')
-    onStart(url, lang, interval)
+    onStart(url, lang, interval, skipSpeech)
   }
 
   return (
@@ -308,6 +316,24 @@ export default function SetupScreen({ onStart, stats, onHelpOpen, onPrivacyOpen 
               </button>
             ))}
           </div>
+        </div>
+
+        {/* ── Speaking toggle ── */}
+        <div className="setup-section">
+          <label className="skip-speech-toggle">
+            <input
+              type="checkbox"
+              checked={skipSpeech}
+              onChange={e => toggleSkipSpeech(e.target.checked)}
+            />
+            <span className="skip-speech-text">
+              <span className="skip-speech-title">🖼️ Skip speaking — pictures only</span>
+              <span className="skip-speech-hint">
+                For kids without a microphone or who'd rather not talk. Challenges go
+                straight to tapping the right picture.
+              </span>
+            </span>
+          </label>
         </div>
 
         {stats?.total > 0 && (
